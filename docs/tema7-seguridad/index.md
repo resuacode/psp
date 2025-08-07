@@ -21,5 +21,5 @@ Al finalizar este tema, el alumno será capaz de:
 
 ## Recursos
 
-- [Ejemplos de código](./ejemplos.md)
-- [Ejercicios prácticos](./ejercicios.md)
+- [Ejemplos de código](./ejemplos)
+- [Ejercicios prácticos](./ejercicios)
