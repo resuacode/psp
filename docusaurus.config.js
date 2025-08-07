@@ -51,7 +51,7 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+            'https://github.com/resuacode/psp/tree/master/',
         },
         blog: false,
         theme: {
@@ -67,21 +67,62 @@ const config = {
       // Replace with your project's social card
       image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: 'My Site',
+        title: 'PSP - 2º DAM',
         logo: {
-          alt: 'My Site Logo',
+          alt: 'PSP Logo',
           src: 'img/logo.svg',
         },
         items: [
           {
             type: 'docSidebar',
-            sidebarId: 'tutorialSidebar',
+            sidebarId: 'mainSidebar',
             position: 'left',
-            label: 'Tutorial',
+            label: 'Inicio',
           },
-          {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/facebook/docusaurus',
+            type: 'docSidebar',
+            sidebarId: 'tema1Sidebar',
+            position: 'left',
+            label: 'Tema 1',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema2Sidebar',
+            position: 'left',
+            label: 'Tema 2',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema3Sidebar',
+            position: 'left',
+            label: 'Tema 3',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema4Sidebar',
+            position: 'left',
+            label: 'Tema 4',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema5Sidebar',
+            position: 'left',
+            label: 'Tema 5',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema6Sidebar',
+            position: 'left',
+            label: 'Tema 6',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'tema7Sidebar',
+            position: 'left',
+            label: 'Tema 7',
+          },
+          {
+            href: 'https://github.com/resuacode/psp',
             label: 'GitHub',
             position: 'right',
           },
@@ -91,50 +132,63 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: 'Documentación',
             items: [
               {
-                label: 'Tutorial',
-                to: '/docs/intro',
+                label: 'Inicio',
+                to: '/docs/',
+              },
+              {
+                label: 'Tema 1: Multitarea',
+                to: '/docs/tema1-multitarea',
+              },
+              {
+                label: 'Tema 2: Hilos',
+                to: '/docs/tema2-hilos',
+              },
+              {
+                label: 'Tema 3: Sincronización',
+                to: '/docs/tema3-sincronizacion',
               },
             ],
           },
           {
-            title: 'Community',
+            title: 'Más Temas',
             items: [
               {
-                label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+                label: 'Tema 4: Comunicación',
+                to: '/docs/tema4-comunicacion-procesos',
               },
               {
-                label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
+                label: 'Tema 5: Red',
+                to: '/docs/tema5-red',
               },
               {
-                label: 'X',
-                href: 'https://x.com/docusaurus',
+                label: 'Tema 6: Servicios',
+                to: '/docs/tema6-servicios-red',
+              },
+              {
+                label: 'Tema 7: Seguridad',
+                to: '/docs/tema7-seguridad',
               },
             ],
           },
           {
-            title: 'More',
+            title: 'Recursos',
             items: [
-              {
-                label: 'Blog',
-                to: '/blog',
-              },
               {
                 label: 'GitHub',
-                href: 'https://github.com/facebook/docusaurus',
+                href: 'https://github.com/resuacode/psp',
               },
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Programación de Servicios y Procesos - 2º DAM. Built with Docusaurus.`,
       },
       prism: {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
+        additionalLanguages: ['java', 'python', 'bash', 'c', 'cpp'],
       },
     }),
 };
