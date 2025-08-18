@@ -10,7 +10,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Programación de Servicios y Procesos',
+  title: 'Programación de Servizos e Procesos',
   tagline: 'Módulo de Segundo de DAM',
   favicon: 'img/favicon.ico',
 
@@ -77,46 +77,31 @@ const config = {
             label: 'Inicio',
           },
           {
-            type: 'docSidebar',
-            sidebarId: 'tema1Sidebar',
+            type: 'dropdown',
+            label: 'Temas',
             position: 'left',
-            label: 'Tema 1',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema2Sidebar',
-            position: 'left',
-            label: 'Tema 2',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema3Sidebar',
-            position: 'left',
-            label: 'Tema 3',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema4Sidebar',
-            position: 'left',
-            label: 'Tema 4',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema5Sidebar',
-            position: 'left',
-            label: 'Tema 5',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema6Sidebar',
-            position: 'left',
-            label: 'Tema 6',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'tema7Sidebar',
-            position: 'left',
-            label: 'Tema 7',
+            items: [
+              {
+                type: 'docSidebar',
+                sidebarId: 'tema1Sidebar',
+                label: 'Tema 1: Fundamentos da Programación Concorrente e Procesos',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tema2Sidebar',
+                label: 'Tema 2: Programación Multifío',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tema3Sidebar',
+                label: 'Tema 3: Programación de Comunicacións en Rede con Sockets',
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'tema4Sidebar',
+                label: 'Tema 4: Xeración de Servizos en Rede e Seguridade',
+              },
+            ],
           },
           {
             href: 'https://github.com/resuacode/psp',
