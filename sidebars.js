@@ -18,6 +18,7 @@ const sidebars = {
   // Sidebar principal con índice y resumen de todos los temas
   mainSidebar: [
     'index',
+    'formato-entregas'
   ],
   
   // Sidebar específico para Tema 1 - Autogenerado
