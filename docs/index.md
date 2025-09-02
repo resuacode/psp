@@ -17,20 +17,20 @@ El temario está dividido en dos grandes bloques:
 
 Este primer bloque se centrará en establecer las bases de la programación concurrente y paralela, abordando la gestión de procesos y, especialmente, la programación con hilos de ejecución.
 
-#### [Tema 1: Fundamentos de la Programación Concurrente y Procesos](./tema1-fundamentos/)
+#### [Tema 1: Fundamentos de la Programación Concurrente y Procesos](./tema1-fundamentos/index)
 Conceptos fundamentales de procesos y programación concurrente.
 
-#### [Tema 2: Programación Multihilo](./tema2-multihilo/)
+#### [Tema 2: Programación Multihilo](./tema2-multihilo/index)
 Creación y gestión de hilos en Java. Sincronización y resolución de problemas de concurrencia.
 
 ### 2. Programación de servicios en Red y Seguridad
 
 El segundo bloque estará dedicado a la comunicación en red, a la creación de servicios y a la implementación de medidas de seguridad en las aplicaciones.
 
-#### [Tema 3: Programación de Comunicaciones en Red con Sockets](./tema3-comunicaciones-red/)
+#### [Tema 3: Programación de Comunicaciones en Red con Sockets](./tema3-comunicaciones-red/index)
 Desarrollo de aplicaciones de red con sockets TCP y UDP.
 
-#### [Tema 4: Generación de Servicios en Red y Seguridad](./tema4-servicios-seguridad/)
+#### [Tema 4: Generación de Servicios en Red y Seguridad](./tema4-servicios-seguridad/index)
 Creación de servicios web seguros e implementación de técnicas de seguridad.
 
 ## 🧑🏼‍🏫 Metodología
