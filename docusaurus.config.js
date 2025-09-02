@@ -10,7 +10,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Programación de Servizos e Procesos',
+  title: 'Programación de Servicios y Procesos',
   tagline: 'Módulo de Segundo de DAM',
   favicon: 'img/favicon.ico',
 
@@ -106,22 +106,22 @@ const config = {
               {
                 type: 'docSidebar',
                 sidebarId: 'tema1Sidebar',
-                label: 'Tema 1: Fundamentos da Programación Concorrente e Procesos',
+                label: 'Tema 1: Fundamentos de la Programación Concurrente y Procesos',
               },
               {
                 type: 'docSidebar',
                 sidebarId: 'tema2Sidebar',
-                label: 'Tema 2: Programación Multifío',
+                label: 'Tema 2: Programación Multihilo',
               },
               {
                 type: 'docSidebar',
                 sidebarId: 'tema3Sidebar',
-                label: 'Tema 3: Programación de Comunicacións en Rede con Sockets',
+                label: 'Tema 3: Programación de Comunicaciones en Red con Sockets',
               },
               {
                 type: 'docSidebar',
                 sidebarId: 'tema4Sidebar',
-                label: 'Tema 4: Xeración de Servizos en Rede e Seguridade',
+                label: 'Tema 4: Generación de Servicios en Red y Seguridad',
               },
             ],
           },
@@ -166,7 +166,7 @@ const config = {
       prism: {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
-        additionalLanguages: ['java', 'python', 'bash', 'c', 'cpp'],
+        additionalLanguages: ['java', 'python', 'bash', 'c', 'cpp', 'kotlin'],
       },
     }),
 };
