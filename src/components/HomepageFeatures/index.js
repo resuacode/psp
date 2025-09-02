@@ -4,18 +4,18 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Apuntes e exemplos 📖',
+    title: 'Apuntes y ejemplos 📖',
     description: (
       <>
-        Documentación completa dos temas de Programación de Servizos e Procesos (PSP) de 2º DAM, con apuntes e exemplos prácticos.
+        Documentación completa de los temas de Programación de Servicios y Procesos (PSP) de 2º DAM, con apuntes y ejemplos prácticos.
       </>
     ),
   },
   {
-    title: 'Exercicios prácticos ✍️',
+    title: 'Ejercicios prácticos ✍️',
     description: (
       <>
-        Exercicios prácticos para reforzar os conceptos aprendidos en cada tema, con solucións e explicacións detalladas.
+        Ejercicios prácticos para reforzar los conceptos aprendidos en cada tema, con soluciones y explicaciones detalladas.
       </>
     ),
   },
@@ -23,7 +23,7 @@ const FeatureList = [
     title: 'Vídeos explicativos 🎥',
     description: (
       <>
-        Vídeos explicativos para cada tema, que facilitan a comprensión dos conceptos e a súa aplicación práctica.
+        Videos explicativos para cada tema, que facilitan la comprensión de los conceptos y su aplicación práctica.
       </>
     ),
   },

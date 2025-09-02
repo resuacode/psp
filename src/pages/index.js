@@ -20,7 +20,7 @@ function HomepageHeader() {
           <Link
             className="button button--secondary button--lg"
             to="/docs/">
-            Ir ao contido do módulo 📚
+            Ir al contenido del módulo 📚
           </Link>
         </div>
       </div>
@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <Layout
       title={`PSP`}
-      description="Módulo de Programación de Servizos e Procesos de 2º DAM">
+      description="Módulo de Programación de Servizos y Procesos de 2º DAM">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
