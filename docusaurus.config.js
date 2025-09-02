@@ -105,6 +105,11 @@ const config = {
             items: [
               {
                 type: 'docSidebar',
+                sidebarId: 'tema0Sidebar',
+                label: 'Tema 0: Introducción a Kotlin',
+              },
+              {
+                type: 'docSidebar',
                 sidebarId: 'tema1Sidebar',
                 label: 'Tema 1: Fundamentos de la Programación Concurrente y Procesos',
               },
