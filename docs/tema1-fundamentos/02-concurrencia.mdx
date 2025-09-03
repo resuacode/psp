@@ -1,0 +1,96 @@
+---
+sidebar_position: 2
+title: Introducción a la Programación Concurrente y Paralela
+---
+
+# Introducción a la Programación Concurrente y Paralela
+
+La programación concurrente hace referencia a la capacidad de un sistema para ejecutar múltiples tareas de manera simultánea, aprovechando al máximo los recursos disponibles. Esto se logra mediante la interleaving de tareas, donde el sistema alterna entre diferentes tareas en ejecución, dando la impresión de que se están ejecutando al mismo tiempo. 
+
+La programación paralela, por otro lado, implica la ejecución simultánea de múltiples tareas en diferentes núcleos de procesamiento, lo que puede mejorar significativamente el rendimiento en sistemas con múltiples procesadores.
+
+Esto es posible gracias a que a día de hoy los procesadores cuentan con múltiples núcleos, lo que permite la ejecución de múltiples hilos de manera simultánea.
+
+:::tip Núcleo vs hilo
+Es habitual a la hora de hablar de procesadores, referirse a los núcleos y hilos como si fueran lo mismo, pero en realidad son conceptos diferentes. 
+
+Un núcleo es la unidad física de procesamiento en un CPU, mientras que un hilo es una unidad de ejecución dentro de un proceso. Un núcleo puede ejecutar múltiples hilos a través de técnicas como el hyper-threading. 
+
+Es por esto que es habitual ver términos como "núcleo" e "hilo" utilizados indistintamente, aunque se refieren a conceptos diferentes.
+:::
+
+## Característica de la programación concurrente
+
+La programación concurrente tiene una serie de características especiales o diferentes con respecto a la programación más tradicional:
+
+1. **Interleaving**: Las tareas se ejecutan de manera intercalada, lo que permite que el sistema responda a múltiples eventos al mismo tiempo.
+2. **Sincronización**: Es necesario coordinar el acceso a recursos compartidos para evitar condiciones de carrera y garantizar la consistencia de los datos.
+3. **Desempeño**: La programación concurrente puede mejorar el rendimiento al aprovechar mejor los recursos del sistema, especialmente en sistemas con múltiples núcleos.
+4. **Escalabilidad**: Las aplicaciones concurrentes pueden escalar mejor en entornos distribuidos, donde múltiples instancias de una aplicación pueden ejecutarse en diferentes nodos.
+
+:::tip ¿Qué son las condiciones de carrera?
+La **condición** **de** **carrera** o *race condition* se produce cuando dos o más hilos acceden a un recurso compartido y tratan de cambiarlo al mismo tiempo. Si el acceso no está debidamente sincronizado, el resultado final puede depender del orden en que se ejecutan los hilos, lo que lleva a comportamientos inesperados y errores difíciles de reproducir.  
+
+Veremos este concepto a nivel práctico más adelante, pero es importante tenerlo en cuenta al diseñar sistemas concurrentes. 
+:::
+
+:::info Entornos distribuidos
+Cuándo hablamos de **entornos** **distribuidos** en el ámbito de la programación nos referimos a sistemas en los que los componentes de una aplicación se ejecutan en diferentes máquinas, que pueden estar ubicadas en la misma red local o en diferentes partes del mundo. 
+Estos sistemas distribuidos pueden comunicarse entre sí a través de redes, lo que les permite trabajar juntos para lograr un objetivo común.  
+
+Un **nodo** de un sistema distribuido se refiere a una instancia individual de un componente de la aplicación que se ejecuta en una máquina específica. Cada nodo puede tener su propia memoria y recursos, y puede comunicarse con otros nodos a través de la red.
+:::
+
+## Ámbitos de programación concurrente
+
+La programación concurrente tiene múltiples ámbitos de aplicación, que incluyen:
+
+1. **Sistemas operativos**: La gestión de procesos y hilos en un sistema operativo es un ejemplo clásico de programación concurrente. Los sistemas operativos utilizan técnicas de planificación para permitir que múltiples procesos se ejecuten de manera concurrente, compartiendo recursos como la CPU y la memoria.
+
+2. **Aplicaciones web**: En el desarrollo de aplicaciones web, la programación concurrente se utiliza para manejar múltiples solicitudes de usuarios simultáneamente. Los servidores web pueden utilizar hilos o procesos para atender cada solicitud de manera independiente, mejorando la capacidad de respuesta y el rendimiento.
+
+3. **Sistemas distribuidos**: En entornos distribuidos, la programación concurrente es esencial para coordinar la comunicación y el procesamiento entre diferentes nodos. Los sistemas distribuidos a menudo utilizan modelos de programación concurrente para gestionar la concurrencia y la sincronización entre componentes que se ejecutan en diferentes máquinas.
+
+4. **Procesamiento de datos**: En aplicaciones de procesamiento de datos, como el análisis de grandes volúmenes de información, la programación concurrente se utiliza para dividir tareas en subtareas más pequeñas que pueden ejecutarse en paralelo, aprovechando al máximo los recursos del sistema.
+
+5. **Interacción con el usuario**: En aplicaciones con interfaces gráficas, la programación concurrente se utiliza para mantener la interfaz de usuario receptiva mientras se realizan operaciones en segundo plano, como la carga de datos o la ejecución de cálculos intensivos.
+
+Estos son solo algunos ejemplos de los ámbitos en los que la programación concurrente juega un papel crucial. A medida que los sistemas se vuelven más complejos y distribuidos, la necesidad de enfoques de programación concurrente se vuelve cada vez más importante.
+
+## Programación paralela y distribuida
+
+La programación paralela y distribuida son dos enfoques relacionados con la ejecución concurrente de tareas, pero tienen diferencias clave.
+
+La **programación paralela** se centra en la ejecución simultánea de múltiples tareas en un único sistema, aprovechando múltiples núcleos de CPU o procesadores para mejorar el rendimiento. En este enfoque, las tareas se dividen en subtareas que se pueden ejecutar en paralelo, lo que permite un procesamiento más rápido y eficiente. La programación paralela es especialmente útil en aplicaciones que requieren un alto rendimiento, como el procesamiento de imágenes, simulaciones científicas y análisis de datos.
+
+Por otro lado, la **programación distribuida** se refiere a la ejecución de tareas en múltiples máquinas o nodos que están conectados a través de una red. En este enfoque, los componentes de una aplicación se distribuyen en diferentes máquinas, lo que permite una mayor escalabilidad y flexibilidad. La programación distribuida es común en sistemas en la nube, aplicaciones web y entornos de microservicios, donde los recursos se pueden asignar y escalar dinámicamente según la demanda.
+
+Ambos enfoques son fundamentales para el desarrollo de aplicaciones modernas y se utilizan en conjunto para abordar problemas complejos que requieren tanto paralelismo como distribución.
+
+### Ventajas y desventajas
+
+La programación paralela ofrece una serie de ventajas con respecto a la programación secuencial, entre las que se incluyen:
+
+1. **Mejora del rendimiento**: Al aprovechar múltiples núcleos de CPU o procesadores, la programación paralela puede reducir significativamente el tiempo de ejecución de tareas intensivas en cómputo.
+
+2. **Eficiencia en el uso de recursos**: La programación paralela permite un mejor aprovechamiento de los recursos del sistema, ya que las tareas se pueden distribuir de manera más equitativa entre los núcleos disponibles.
+
+3. **Escalabilidad**: Las aplicaciones paralelas pueden escalar más fácilmente para aprovechar hardware adicional, lo que las hace más adecuadas para entornos de alto rendimiento.
+
+Sin embargo, la programación paralela también presenta desafíos y desventajas:
+
+1. **Complejidad**: La programación paralela puede ser más compleja que la programación secuencial, ya que los desarrolladores deben gestionar la sincronización y la comunicación entre hilos o procesos.
+
+2. **Depuración**: Los errores en aplicaciones paralelas pueden ser más difíciles de reproducir y depurar, lo que puede aumentar el tiempo de desarrollo.
+
+3. **Sobrecarga de comunicación**: En algunos casos, la comunicación entre hilos o procesos puede introducir una sobrecarga que contrarresta las ventajas de la paralelización.
+
+La programación distribuida, por su parte, también tiene sus propias ventajas y desventajas:
+
+1. **Ventajas**:
+   - **Escalabilidad**: La programación distribuida permite escalar aplicaciones fácilmente al agregar más nodos a la red.
+   - **Tolerancia a fallos**: Los sistemas distribuidos pueden ser más resilientes a fallos, ya que los componentes pueden ejecutarse en diferentes máquinas.
+
+2. **Desventajas**:
+   - **Latencia**: La comunicación entre nodos puede introducir latencia, lo que puede afectar el rendimiento.
+   - **Complejidad de gestión**: La gestión de un sistema distribuido puede ser más compleja que la de un sistema centralizado, especialmente en lo que respecta a la sincronización y la coherencia de datos.  
