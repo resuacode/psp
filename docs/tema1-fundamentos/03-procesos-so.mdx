@@ -52,10 +52,62 @@ Estos estados pueden variar ligeramente entre diferentes sistemas operativos, pe
 Podríamos representar las transiciones de un estado a otro de la siguiente forma:
 
 ```mermaid
-graph TD;
-    A[Nuevo] --> B[Listo];
-    B --> C[Ejecutando];
-    C --> D[Bloqueado];
-    D --> C;
-    C --> E[Terminado];
+---
+config:
+  theme: mc
+  look: handDrawn
+---
+flowchart TD
+    A["Nuevo"] --> B["Listo"]
+    B --> C["Ejecutando"]
+    C --> D["Bloqueado"] & E["Terminado"]
+    D L_D_C_0@--> C
+    style A stroke:#00C853,stroke-width:4px,stroke-dasharray: 0
+    style B stroke:#2962FF,stroke-width:4px,stroke-dasharray: 0
+    style C stroke:#FFD600,stroke-width:4px,stroke-dasharray: 0
+    style D stroke:#D50000,stroke-width:4px,stroke-dasharray: 0
+    style E stroke:#000000,stroke-width:4px,stroke-dasharray: 0
+    linkStyle 0 stroke:#2962FF,fill:none
+    linkStyle 1 stroke:#FFD600,fill:none
+    linkStyle 2 stroke:#D50000,fill:none
+    linkStyle 4 stroke:#FFD600,fill:none
+    L_D_C_0@{ animation: none }
+
 ```
+
+### Algoritmos de planificación
+
+Cuando varios procesos compiten por el mismo recurso, el sistema operativo debe decidir cuál de ellos obtiene acceso al recurso y por cuánto tiempo. Este proceso de toma de decisiones se conoce como planificación de procesos.
+
+Existen varios algoritmos de planificación que se pueden utilizar, cada uno con sus propias ventajas y desventajas. Algunos de los algoritmos de planificación más comunes son:
+
+- **FIFO (First In, First Out)**: Este algoritmo asigna el recurso al primer proceso que lo solicita. Es simple de implementar, pero puede llevar a tiempos de espera largos para procesos que llegan más tarde.
+
+- **LIFO (Last In, First Out)**: Este algoritmo asigna el recurso al último proceso que lo solicitó. Es útil en situaciones donde los procesos más recientes son más importantes, pero puede llevar a la inanición de procesos más antiguos.
+
+- **Round Robin**: Este algoritmo asigna un tiempo fijo de CPU a cada proceso en una cola. Cuando un proceso agota su tiempo, se coloca al final de la cola y se le asigna el CPU al siguiente proceso. Esto permite una mejor respuesta para procesos interactivos, pero puede ser ineficiente para procesos de larga duración.
+
+- **Prioridad**: Este algoritmo asigna recursos a procesos en función de su prioridad. Los procesos de mayor prioridad obtienen acceso al recurso antes que los de menor prioridad. Esto puede llevar a la inanición de procesos de baja prioridad si siempre hay procesos de alta prioridad en la cola.
+
+- **SJF (Shortest Job First)**: Este algoritmo asigna el recurso al proceso con el tiempo de ejecución más corto. Esto puede mejorar la eficiencia general del sistema, pero requiere conocer el tiempo de ejecución de los procesos de antemano, lo cual no siempre es posible.
+
+- **Multilevel Queue**: Este algoritmo organiza los procesos en diferentes colas según su prioridad. Cada cola puede tener su propio algoritmo de planificación, lo que permite una mayor flexibilidad en la gestión de procesos.   
+
+Cada uno de estos algoritmos tiene sus propias características y es adecuado para diferentes tipos de sistemas y cargas de trabajo. La elección del algoritmo de planificación adecuado es crucial para garantizar un rendimiento óptimo del sistema.
+
+Un mismo proceso puede tener varias **ráfagas** de CPU, es decir, puede ser interrumpido y reanudado varias veces durante su ejecución. Las razones por las cuales un proceso puede necesitar un cierto tiempo de bloqueo pueden ser como que necesite realizar **operaciones de entrada/salida** o esperar la finalización de otro proceso.    
+
+:::info El concepto de Quantum
+
+El **quantum** es el tiempo máximo que un proceso puede utilizar el CPU antes de ser interrumpido y colocado de nuevo en la cola de listos. Este concepto es fundamental en algoritmos de planificación como Round Robin, donde se asigna un quantum fijo a cada proceso. La elección de un quantum adecuado es importante: un quantum muy corto puede llevar a una alta sobrecarga de conmutación de contexto, mientras que un quantum muy largo puede hacer que los procesos interactivos se sientan lentos.
+
+Algunos algoritmos de planificación utilizan el concepto de quantum para gestionar el tiempo de CPU de manera más eficiente. Por ejemplo, en el algoritmo Round Robin, se asigna un quantum fijo a cada proceso, lo que garantiza que todos los procesos tengan la oportunidad de ejecutarse en un tiempo razonable. Esto es especialmente útil en sistemas interactivos, donde la capacidad de respuesta es crucial.   
+
+:::
+
+:::warning Algoritmos de planificación expropiativos o no expropiativos
+
+Los algoritmos de planificación pueden ser **expropiativos** o **no expropiativos**. Los algoritmos expropiativos permiten que un proceso en ejecución sea interrumpido para dar paso a otro proceso de mayor prioridad. Por otro lado, los algoritmos no expropiativos no permiten que un proceso en ejecución sea interrumpido; debe completar su tiempo de CPU antes de que otro proceso pueda ejecutarse.   
+
+:::
+
