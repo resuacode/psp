@@ -56,12 +56,13 @@ Podríamos representar las transiciones de un estado a otro de la siguiente form
 config:
   theme: mc
   look: handDrawn
+  layout: elk
 ---
-flowchart TD
+flowchart LR
     A["Nuevo"] --> B["Listo"]
-    B --> C["Ejecutando"]
-    C --> D["Bloqueado"] & E["Terminado"]
-    D L_D_C_0@--> C
+    B --> C["En ejecución"]
+    C --> D["Bloqueado"] & E["Terminado"] & B
+    D L_D_C_0@--> C & B
     style A stroke:#00C853,stroke-width:4px,stroke-dasharray: 0
     style B stroke:#2962FF,stroke-width:4px,stroke-dasharray: 0
     style C stroke:#FFD600,stroke-width:4px,stroke-dasharray: 0
@@ -70,8 +71,11 @@ flowchart TD
     linkStyle 0 stroke:#2962FF,fill:none
     linkStyle 1 stroke:#FFD600,fill:none
     linkStyle 2 stroke:#D50000,fill:none
-    linkStyle 4 stroke:#FFD600,fill:none
+    linkStyle 4 stroke:#2962FF,fill:none
+    linkStyle 5 stroke:#FFD600,fill:none
+    linkStyle 6 stroke:#2962FF,fill:none
     L_D_C_0@{ animation: none }
+
 
 ```
 
@@ -110,4 +114,216 @@ Algunos algoritmos de planificación utilizan el concepto de quantum para gestio
 Los algoritmos de planificación pueden ser **expropiativos** o **no expropiativos**. Los algoritmos expropiativos permiten que un proceso en ejecución sea interrumpido para dar paso a otro proceso de mayor prioridad. Por otro lado, los algoritmos no expropiativos no permiten que un proceso en ejecución sea interrumpido; debe completar su tiempo de CPU antes de que otro proceso pueda ejecutarse.   
 
 :::
+
+### Gestión y Monitorización de Procesos
+
+Existen diversos programas y comandos para la gestión y monitorización de procesos en diferentes sistemas operativos. Algunos de los más comunes son:
+
+- **Windows**: El Administrador de tareas permite ver y gestionar los procesos en ejecución. También se pueden utilizar comandos como `tasklist` y `taskkill` en la línea de comandos.
+
+- **Linux**: Herramientas como `top`, `htop` y `ps` permiten monitorizar los procesos en tiempo real. Para gestionar procesos, se pueden utilizar comandos como `kill` y `nice`.
+
+- **macOS**: El Monitor de Actividad proporciona una interfaz gráfica para gestionar procesos. También se pueden utilizar comandos similares a los de Linux en la terminal.
+
+Estas herramientas son esenciales para los administradores de sistemas y los desarrolladores, ya que permiten identificar y resolver problemas relacionados con el rendimiento de los procesos.
+
+#### Administrador de tareas
+
+El administrador de tareas de Windows permite ver y gestionar los procesos en ejecución. Proporciona información sobre el uso de CPU, memoria y disco de cada proceso, así como la capacidad de finalizar procesos que no responden.
+
+Además, permite cambiar la prioridad de los procesos y ver información detallada sobre el rendimiento del sistema.
+
+En Windows 11 podemos observar mejoras en la interfaz del Administrador de tareas, incluyendo una vista más clara de los procesos en ejecución y su impacto en el rendimiento del sistema.
+
+Además, se han añadido nuevas funcionalidades, como la posibilidad de agrupar procesos por aplicación y ver el uso de recursos de manera más detallada.
+
+#### El comando ``tasklist``
+
+Con el comando ``tasklist``podemos ver una lista de todos los procesos en ejecución en el sistema, junto con información detallada como el ID del proceso (PID), el nombre de la imagen y el uso de memoria.
+
+Contiene las siguientes opciones: 
+
+- **/s**: Muestra información sobre los procesos en todos los sistemas.
+- **/fo**: Especifica el formato de salida (table, list, csv).
+- **/v**: Muestra información detallada sobre los procesos.
+
+##### Ejemplos de uso de ``tasklist``
+
+Para ver todos los procesos en ejecución en el sistema, podemos utilizar el comando ``tasklist`` sin ninguna opción adicional:
+
+```
+tasklist
+```
+
+Esto mostrará una lista de todos los procesos en ejecución, junto con información como el PID y el uso de memoria.
+
+Si queremos ver la información en un formato específico, podemos utilizar la opción ``/fo``. Por ejemplo, para obtener la lista en formato CSV, podemos ejecutar:
+
+```
+tasklist /fo csv
+```
+
+#### El comando ``taskkill``
+
+Por otro lado, el comando ``taskkill`` nos permite finalizar un proceso en ejecución utilizando su PID o nombre de imagen. Esto es útil para cerrar aplicaciones que no responden o para liberar recursos del sistema.
+
+También tiene las siguientes opciones:
+
+- **/f**: Fuerza la finalización del proceso.
+- **/t**: Finaliza el proceso y todos sus procesos secundarios.
+
+##### Ejemplos de uso de ``taskkill``
+
+Para finalizar un proceso utilizando su PID, podemos ejecutar el siguiente comando:
+
+```
+taskkill /pid <PID>
+```
+
+Donde `<PID>` es el ID del proceso que queremos finalizar.
+
+Si queremos finalizar un proceso utilizando su nombre de imagen, podemos utilizar el siguiente comando:
+
+```
+taskkill /im <nombre_imagen>
+```
+
+Donde `<nombre_imagen>` es el nombre del proceso que queremos finalizar (por ejemplo, `notepad.exe`).
+
+#### El comando ``top``en Linux
+
+El comando ``top`` es una herramienta de monitorización en tiempo real que muestra los procesos en ejecución en un sistema Linux. Proporciona información sobre el uso de CPU, memoria y otros recursos del sistema.
+
+##### Ejemplos de uso de ``top``
+
+Para utilizar el comando ``top``, simplemente debemos escribir ``top`` en la terminal y presionar Enter:
+
+```
+top
+```
+
+Esto abrirá una interfaz en la terminal que se actualizará automáticamente para mostrar los procesos en ejecución.
+
+Si queremos ver información más detallada sobre un proceso específico, podemos presionar la tecla ``h`` mientras estamos en la interfaz de ``top`` para ver la ayuda y las opciones disponibles.
+
+#### El comando ``htop`` en Linux
+
+El comando ``htop`` es una versión mejorada de ``top`` que proporciona una interfaz más amigable y fácil de usar para monitorizar los procesos en un sistema Linux. Ofrece características adicionales como la posibilidad de ordenar procesos, buscar procesos específicos y ver información detallada sobre el uso de recursos.
+
+##### Ejemplos de uso de ``htop``
+
+Para utilizar el comando ``htop``, simplemente debemos escribir ``htop`` en la terminal y presionar Enter:
+
+```
+htop
+```
+
+Esto abrirá una interfaz en la terminal que se actualizará automáticamente para mostrar los procesos en ejecución.
+
+Si queremos ver información más detallada sobre un proceso específico, podemos utilizar las teclas de flecha para navegar por la lista de procesos y seleccionar el que nos interese.
+
+Opciones adicionales de ``htop``:
+
+- **F2**: Acceder al menú de configuración.
+- **F3**: Buscar un proceso.
+- **F4**: Filtrar procesos.
+- **F5**: Ver la jerarquía de procesos.
+- **F6**: Ordenar procesos por diferentes criterios.
+- **F9**: Finalizar un proceso.
+
+#### El comando ``ps``en Linux
+
+El comando ``ps`` (process status) se utiliza para mostrar información sobre los procesos en ejecución en un sistema Linux. A diferencia de ``top`` y ``htop``, que muestran información en tiempo real, ``ps`` proporciona una instantánea de los procesos en el momento en que se ejecuta el comando.
+
+##### Ejemplos de uso de ``ps``
+
+Para ver una lista de los procesos en ejecución del usuario actual, podemos utilizar el siguiente comando:
+
+```
+ps
+```
+
+Si queremos ver información más detallada, podemos utilizar la opción ``-f`` para mostrar una lista completa de los procesos:
+
+```
+ps -f
+```
+
+Para ver todos los procesos en el sistema, incluidos los de otros usuarios, podemos utilizar la opción ``-e``:
+
+```
+ps -e
+```
+
+#### El comando ``kill``en Linux
+
+El comando ``kill`` se utiliza para enviar señales a los procesos en ejecución, lo que permite finalizar o controlar su comportamiento. La señal más comúnmente utilizada es ``SIGTERM``, que solicita a un proceso que se termine de manera ordenada.
+
+##### Ejemplos de uso de ``kill``
+
+Para finalizar un proceso utilizando su PID, podemos ejecutar el siguiente comando:
+
+```
+kill <PID>
+```
+
+Donde `<PID>` es el ID del proceso que queremos finalizar.
+
+Si queremos forzar la finalización de un proceso, podemos utilizar la opción ``-9`` para enviar la señal ``SIGKILL``:
+
+```
+kill -9 <PID>
+```
+
+Esto finalizará el proceso de inmediato, sin darle la oportunidad de realizar una limpieza.
+
+#### El comando ``pkill`` en Linux
+
+El comando ``pkill`` se utiliza para finalizar procesos en función de su nombre de imagen, en lugar de su PID. Esto puede ser útil cuando no conocemos el PID de un proceso, pero sí su nombre.
+
+##### Ejemplos de uso de ``pkill``
+
+Para finalizar un proceso utilizando su nombre de imagen, podemos ejecutar el siguiente comando:
+
+```
+pkill <nombre_imagen>
+```
+
+Donde `<nombre_imagen>` es el nombre del proceso que queremos finalizar (por ejemplo, `firefox`).
+
+#### El comando ``killall`` en Linux
+
+El comando ``killall`` se utiliza para finalizar todos los procesos que coinciden con un nombre de imagen específico. A diferencia de ``pkill``, que puede utilizarse para enviar señales a procesos específicos, ``killall`` finaliza todos los procesos que coinciden con el nombre proporcionado.
+
+##### Ejemplos de uso de ``killall``
+
+Para finalizar todos los procesos con un nombre de imagen específico, podemos ejecutar el siguiente comando:
+
+```
+killall <nombre_imagen>
+```
+
+Donde `<nombre_imagen>` es el nombre del proceso que queremos finalizar (por ejemplo, `firefox`).
+
+#### El comando ``nice`` en Linux
+
+El comando ``nice`` se utiliza para ejecutar un programa con una prioridad de CPU modificada. Permite aumentar o disminuir la prioridad de un proceso, lo que puede ser útil para gestionar la carga del sistema y garantizar que los procesos importantes reciban más recursos.
+
+##### Ejemplos de uso de ``nice``
+
+Para ejecutar un comando con una prioridad más baja, podemos utilizar el siguiente comando:
+
+```
+nice -n 10 <comando>
+```
+
+Donde `<comando>` es el comando que queremos ejecutar. En este caso, estamos estableciendo una prioridad de 10, lo que significa que el proceso tendrá menos prioridad que otros procesos en ejecución.
+
+Si queremos ejecutar un comando con una prioridad más alta, podemos utilizar un valor negativo:
+
+```
+nice -n -5 <comando>
+```
+
+Esto aumentará la prioridad del proceso, permitiéndole acceder a más recursos del sistema.
 
