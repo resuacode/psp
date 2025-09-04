@@ -327,3 +327,32 @@ nice -n -5 <comando>
 
 Esto aumentará la prioridad del proceso, permitiéndole acceder a más recursos del sistema.
 
+#### El comando ``renice`` en Linux
+El comando ``renice`` se utiliza para cambiar la prioridad de un proceso en ejecución. A diferencia de ``nice``, que establece la prioridad al iniciar un proceso, ``renice`` permite modificar la prioridad de un proceso ya existente.
+
+##### Ejemplos de uso de ``renice``
+
+Para cambiar la prioridad de un proceso en ejecución, podemos utilizar el siguiente comando:
+
+```
+renice <nuevo_nice> -p <PID>
+```
+
+Donde `<nuevo_nice>` es el nuevo valor de prioridad que queremos establecer (puede ser positivo o negativo) y `<PID>` es el ID del proceso cuyo valor de prioridad queremos cambiar.
+Por ejemplo, para aumentar la prioridad de un proceso con PID 1234, podemos ejecutar:
+
+```
+renice -5 -p 1234
+```
+Esto establecerá la prioridad del proceso a -5, lo que le dará más acceso a los recursos del sistema.
+
+### Otras herramientas gráficas
+
+Además de las herramientas de línea de comandos mencionadas anteriormente, existen varias herramientas gráficas que facilitan la gestión y monitorización de procesos en diferentes sistemas operativos. Algunas de las más populares incluyen: 
+
+- **Process Explorer (Windows)**: Es una herramienta avanzada de monitorización de procesos que proporciona información detallada sobre los procesos en ejecución, incluyendo sus dependencias y recursos utilizados. Es especialmente útil para diagnosticar problemas de rendimiento y seguridad.
+- **System Monitor (Linux)**: Muchas distribuciones de Linux incluyen una herramienta gráfica de monitorización del sistema que permite ver y gestionar los procesos en ejecución. Estas herramientas suelen ofrecer funcionalidades similares a las de ``htop``, pero con una interfaz gráfica más amigable.
+- **Activity Monitor (macOS)**: Es la herramienta gráfica de monitorización de procesos en macOS. Permite ver y gestionar los procesos en ejecución, así como monitorizar el uso de recursos del sistema como CPU, memoria y disco.
+
+Estas herramientas gráficas son especialmente útiles para usuarios que prefieren una interfaz visual para gestionar los procesos en lugar de utilizar la línea de comandos. Proporcionan una manera intuitiva de monitorizar el rendimiento del sistema y resolver problemas relacionados con los procesos. 
+
