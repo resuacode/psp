@@ -264,7 +264,7 @@ fun main() {
 }
 ```
 
-### La clase ``Runtime``para la creación de procesos
+### La clase ``Runtime`` para la creación de procesos
 
 A diferencia de la clase ``ProcessBuilder``, la clase ``Runtime`` es más simple y directa, pero ofrece menos control sobre el proceso.
 
@@ -295,6 +295,207 @@ La principal diferencia entre `ProcessBuilder` y `Runtime` radica en el nivel de
 
 La decisión de cuándo utilizar una opción u otra depende de los requisitos específicos de la aplicación. Si se necesita un control fino sobre el proceso y su entorno, `ProcessBuilder` es la mejor opción. Si se busca una solución rápida y sencilla, `Runtime` puede ser suficiente.
 :::
+
+### La clase ``ProcessHandle`` 
+La clase `ProcessHandle` proporciona una forma de interactuar con procesos en ejecución. Permite obtener información sobre un proceso, como su ID, estado y tiempo de ejecución. Aquí hay un ejemplo de cómo usar la clase `ProcessHandle`:
+
+```kotlin
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+fun main() {
+    // Crear un proceso para ejecutar el comando 'sleep 10'
+    val processBuilder = ProcessBuilder("sleep", "10")
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
+
+        println("Proceso iniciado con PID: ${processHandle.pid()}")
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+En este ejemplo, creamos un proceso que ejecuta el comando `sleep 10`. Utilizamos `ProcessBuilder` para iniciar el proceso y luego obtenemos su `ProcessHandle` para acceder a información sobre el proceso, como su ID.
+
+#### Métodos y ejemplos de la clase ``ProcessHandle``
+Los métodos más utilizados de la clase `ProcessHandle` son los que podemos encontrar en la siguiente tabla:
+| Método                       | Descripción                                                  |
+|------------------------------|--------------------------------------------------------------|
+| `pid()`                      | Devuelve el ID del proceso.                                  |
+| `isAlive()`                  | Devuelve true si el proceso aún está en ejecución.           |
+| `info()`                     | Devuelve un objeto `ProcessHandle.Info` con información sobre el proceso. |
+| `children()`                 | Devuelve un flujo de los procesos hijos del proceso.        |
+| `parent()`                   | Devuelve un `Optional<ProcessHandle>` con el proceso padre, si existe. |
+| `destroy()`                  | Termina el proceso de forma abrupta.                         |
+| `onExit()`                   | Devuelve un `CompletableFuture<ProcessHandle>` que se completa cuando el proceso termina. |    
+
+Aquí hay un ejemplo de cómo usar algunos de estos métodos:
+
+```kotlin
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+fun main() {
+    // Crear un proceso para ejecutar el comando 'sleep 10'
+    val processBuilder = ProcessBuilder("sleep", "10")
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
+        println("Proceso iniciado con PID: ${processHandle.pid()}")
+        println("¿El proceso está vivo? ${processHandle.isAlive()}")
+        val info = processHandle.info()
+        println("Información del proceso: $info")
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+### Lanzamiento de procesos en segundo plano
+
+Para lanzar un proceso en segundo plano, podemos utilizar la clase `ProcessBuilder` y redirigir la salida del proceso a un archivo o a `/dev/null` en sistemas Unix. Aquí hay un ejemplo de cómo hacerlo:
+
+```kotlin
+import java.io.File
+import java.lang.ProcessBuilder
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'sleep 10'
+    val processBuilder = ProcessBuilder("sleep", "10")
+    processBuilder.redirectOutput(File("/dev/null")) // Redirigir la salida a /dev/null
+    processBuilder.redirectError(File("/dev/null")) // Redirigir los errores a /dev/null
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
+        println("Proceso iniciado con PID: ${processHandle.pid()}")
+        println("¿El proceso está vivo? ${processHandle.isAlive()}")
+        val info = processHandle.info()
+        println("Información del proceso: $info")
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+En este ejemplo, creamos un proceso que ejecuta el comando `sleep 10` y redirigimos su salida y errores a `/dev/null`, lo que permite que el proceso se ejecute en segundo plano sin mostrar salida en la consola.
+
+### Lanzamiento de procesos en primer plano
+
+Para lanzar un proceso en primer plano, simplemente no redirigimos su salida. Aquí hay un ejemplo de cómo hacerlo:
+
+```kotlin
+import java.lang.ProcessBuilder
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'sleep 10'
+    val processBuilder = ProcessBuilder("sleep", "10")
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
+        println("Proceso iniciado con PID: ${processHandle.pid()}")
+        println("¿El proceso está vivo? ${processHandle.isAlive()}")
+        val info = processHandle.info()
+        println("Información del proceso: $info")
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+En este ejemplo, creamos un proceso que ejecuta el comando `sleep 10` y no redirigimos su salida, lo que permite que el proceso se ejecute en primer plano y muestre su salida en la consola.
+
+### Ejecución de programas o scripts externos
+
+Para ejecutar programas o scripts externos desde una aplicación Kotlin, podemos utilizar la clase `ProcessBuilder`. Aquí hay un ejemplo de cómo hacerlo:
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+fun main() {
+    // Crear un proceso para ejecutar un script externo
+    val processBuilder = ProcessBuilder("path/to/your/script.sh")
+    processBuilder.directory(File("/path/to/your/script/directory")) // Establecer el directorio de trabajo
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+En este ejemplo, creamos un proceso que ejecuta un script externo ubicado en `path/to/your/script.sh`. Utilizamos `ProcessBuilder` para configurar y lanzar el proceso, y luego leemos su salida.
+
+Esto nos puede servir para ejecutar cualquier programa o script externo desde nuestra aplicación Kotlin, lo que nos permite integrar funcionalidades adicionales o automatizar tareas.
+
+Incluso podemos pasar argumentos al script o programa externo de la siguiente manera:
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+fun main() {
+    // Crear un proceso para ejecutar un script externo con argumentos
+    val processBuilder = ProcessBuilder("path/to/your/script.sh", "arg1", "arg2")
+    processBuilder.directory(File("/path/to/your/script/directory")) // Establecer el directorio de trabajo
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+En este ejemplo, pasamos dos argumentos (`arg1` y `arg2`) al script externo. Estos argumentos pueden ser utilizados dentro del script para modificar su comportamiento o procesar datos específicos.
+
+Combinando estos conceptos, podemos crear aplicaciones Kotlin que interactúen con otros programas o scripts, lo que nos permite ampliar las capacidades de nuestras aplicaciones y automatizar tareas de manera eficiente.  
 
 ## Comunicación entre procesos
 
@@ -555,4 +756,6 @@ En este ejemplo, la clase `Monitor` encapsula un recurso compartido y proporcion
 
 :::info Más sobre sincronización en el tema 2
 Veremos más en detalle la sincronización en el tema 2, donde hablaremos de hilos y concurrencia. En este tema, profundizaremos en las técnicas de sincronización y cómo aplicarlas en aplicaciones concurrentes.
+
+Los semáforos, mutexes y monitores son herramientas esenciales para garantizar la integridad de los datos y evitar condiciones de carrera en aplicaciones concurrentes. Estas herramientas permiten coordinar el acceso a recursos compartidos y asegurar que solo un proceso pueda acceder a ellos en un momento dado. Es importante elegir la técnica de sincronización adecuada según las necesidades específicas de la aplicación y el entorno en el que se ejecuta.    
 :::
