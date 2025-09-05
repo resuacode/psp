@@ -9,6 +9,169 @@ En esta sección, veremos cómo crear y gestionar procesos desde una aplicación
 Vamos a utilizar Kotlin como lenguaje de programación. Existen otras alternativas, como Python o C/C++, pero Kotlin nos permite ilustrar los conceptos de manera clara y concisa. Además, viniendo de Java, la sintaxis y las herramientas son familiares.  
 
 ## Creación y Gestión de Procesos
+
+### La clase `Process`
+
+La clase `Process` representa un proceso en ejecución. Esta clase proporciona métodos para interactuar con el proceso, como obtener su salida, error y código de salida.
+
+Aquí hay un ejemplo de cómo usar la clase ``Process``:
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'ls -l'
+    val processBuilder = ProcessBuilder("ls", "-l")
+    processBuilder.directory(File("/")) // Establecer el directorio de trabajo
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso, el método start() devuelve un objeto Process
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+En este ejemplo, creamos un proceso que ejecuta el comando `ls -l` en el directorio raíz. Utilizamos `ProcessBuilder` para configurar y lanzar el proceso, y luego leemos su salida.
+
+La gestión de procesos incluye la capacidad de esperar a que un proceso termine, obtener su código de salida y manejar errores.
+
+#### Métodos y ejemplos de la clase ``Process``
+
+En la siguiente tabla podemos ver los métodos más relevantes de la clase para manejar procesos:
+
+| Método                     | Descripción                                                  |
+|----------------------------|--------------------------------------------------------------|
+| `waitFor()`                | Espera a que el proceso termine y devuelve su código de salida. |
+| `getInputStream()`         | Devuelve un flujo de entrada para leer la salida del proceso. |
+| `getErrorStream()`         | Devuelve un flujo de entrada para leer los errores del proceso. |
+| `destroy()`                | Termina el proceso de forma abrupta.                         |
+| `isAlive()`                | Devuelve true si el proceso aún está en ejecución.           |
+| `getOutputStream()`        | Devuelve un flujo de salida para escribir en el proceso.     |
+| `exitValue()`              | Devuelve el código de salida del proceso.                    |
+
+Veamos una serie de ejemplos, en este primer ejemplo crearemos un proceso que ejecuta el comando `ps` para listar los procesos en ejecución.
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'ps'
+    val processBuilder = ProcessBuilder("ps")
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+```
+
+A continuación veamos un segundo ejemplo, donde crearemos un proceso que ejecuta el comando `grep` para buscar una cadena en un archivo.
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'grep'
+    val processBuilder = ProcessBuilder("grep", "cadena_a_buscar", "archivo.txt")
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+```
+
+En este otro ejemplo, crearemos un proceso que se ejecute en segundo plano utilizando el comando `sleep`.
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'sleep'
+    val processBuilder = ProcessBuilder("sleep", "10")
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+
+```
+
+### La clase ``ProcessBuilder``
+
+A diferencia de ``Process``, la clase ``ProcessBuilder`` se utiliza para crear y configurar un nuevo proceso antes de iniciarlo. Proporciona una forma más flexible y poderosa de construir procesos, permitiendo establecer el entorno, redirigir flujos de entrada/salida y configurar otras opciones.
+
 En Kotlin, podemos crear y gestionar procesos utilizando la clase `ProcessBuilder`. Aquí hay un ejemplo básico:
 ```kotlin
 import java.io.File
@@ -49,4 +212,347 @@ La gestión de procesos incluye la capacidad de esperar a que un proceso termine
 
 :::tip La clase ``ProcessBuilder``
 La clase `ProcessBuilder` es una herramienta poderosa para crear y gestionar procesos en Java y Kotlin. Permite configurar el entorno del proceso, redirigir la entrada y salida, y manejar errores de manera eficiente.
+:::
+
+#### Métodos y ejemplos de la clase ``ProcessBuilder``
+
+Los métodos más utilizados de la clase `ProcessBuilder`son los que podemos encontrar en la siguiente tabla:
+
+| Método                       | Descripción                                                  |
+|------------------------------|--------------------------------------------------------------|
+| `command(vararg command: String)` | Establece el comando y sus argumentos a ejecutar.          |
+| `directory(dir: File)`       | Establece el directorio de trabajo del proceso.              |
+| `redirectErrorStream(redir: Boolean)` | Redirige el flujo de error al flujo de salida.        |
+| `start()`                    | Inicia el proceso y devuelve un objeto `Process`.            |
+| `inheritIO()`                | Redirige la entrada/salida del proceso a la entrada/salida del proceso padre. |
+| `redirectInput(input: File)` | Redirige la entrada estándar del proceso a un archivo.       |
+| `redirectOutput(output: File)` | Redirige la salida estándar del proceso a un archivo.       |
+| `redirectError(error: File)`   | Redirige el flujo de error del proceso a un archivo.        |
+| `environment()`                | Devuelve un mapa del entorno del proceso.                   |
+
+Veamos ejemplos de uso de estos métodos:
+
+```kotlin
+import java.io.File
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import java.lang.ProcessBuilder
+import java.util.concurrent.TimeUnit
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'ls -l'
+    val processBuilder = ProcessBuilder("ls", "-l")
+    processBuilder.directory(File("/")) // Establecer el directorio de trabajo
+    processBuilder.redirectErrorStream(true) // Redirigir errores al flujo de salida
+
+    try {
+        val process = processBuilder.start() // Iniciar el proceso
+
+        // Leer la salida del proceso
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+
+        // Esperar a que el proceso termine
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+### La clase ``Runtime``para la creación de procesos
+
+A diferencia de la clase ``ProcessBuilder``, la clase ``Runtime`` es más simple y directa, pero ofrece menos control sobre el proceso.
+
+Aquí hay un ejemplo de cómo usar la clase ``Runtime`` para ejecutar un comando:
+
+```kotlin
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+fun main() {
+    try {
+        val process = Runtime.getRuntime().exec("ls -l")
+        val reader = BufferedReader(InputStreamReader(process.inputStream))
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            println(line)
+        }
+        val exitCode = process.waitFor()
+        println("Proceso terminado con código de salida: $exitCode")
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+:::info `ProcessBuilder` vs `Runtime`
+La principal diferencia entre `ProcessBuilder` y `Runtime` radica en el nivel de control que ofrecen sobre el proceso. `ProcessBuilder` permite una configuración más detallada del entorno del proceso, incluyendo la redirección de flujos de entrada/salida y la modificación del entorno del proceso. Por otro lado, `Runtime` es más simple y directo, pero ofrece menos opciones de configuración.
+
+La decisión de cuándo utilizar una opción u otra depende de los requisitos específicos de la aplicación. Si se necesita un control fino sobre el proceso y su entorno, `ProcessBuilder` es la mejor opción. Si se busca una solución rápida y sencilla, `Runtime` puede ser suficiente.
+:::
+
+## Comunicación entre procesos
+
+Existen diversas formas de comunicación entre procesos, entre las que se incluyen:
+
+- **Pipes**: Permiten la comunicación unidireccional entre procesos. Un proceso puede escribir en un pipe y otro proceso puede leer de él.
+- **Sockets**: Proporcionan una comunicación bidireccional entre procesos, incluso si están en diferentes máquinas.
+- **Memoria compartida**: Permite que varios procesos accedan a la misma región de memoria, lo que facilita la comunicación rápida entre ellos.
+
+### Pipes
+
+Los **pipes** son una forma de comunicación unidireccional entre procesos. Permiten que un proceso escriba datos en un pipe, que luego pueden ser leídos por otro proceso. En Kotlin, se pueden utilizar pipes a través de flujos de entrada/salida.
+
+Aquí hay un ejemplo de cómo usar pipes en Kotlin:
+
+```kotlin
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.lang.ProcessBuilder
+
+fun main() {
+    // Crear un proceso para ejecutar el comando 'grep "kotlin"'
+    val processBuilder = ProcessBuilder("grep", "kotlin")
+    val process = processBuilder.start()
+
+    // Escribir en el pipe de entrada del proceso
+    val writer = OutputStreamWriter(process.outputStream)
+    writer.write("kotlin es un lenguaje de programación\n")
+    writer.write("java es otro lenguaje de programación\n")
+    writer.flush()
+    writer.close()
+
+    // Leer la salida del proceso
+    val reader = BufferedReader(InputStreamReader(process.inputStream))
+    var line: String?
+    while (reader.readLine().also { line = it } != null) {
+        println(line)
+    }
+
+    // Esperar a que el proceso termine
+    val exitCode = process.waitFor()
+    println("Proceso terminado con código de salida: $exitCode")
+}
+```
+
+### Sockets
+
+A diferencia de las *pipes*, los **Sockets** proporcionan una comunicación bidireccional entre procesos, incluso si están en diferentes máquinas. Los sockets permiten que un proceso envíe y reciba datos a través de una conexión de red.
+
+Aquí hay un ejemplo de cómo usar sockets en Kotlin:
+
+```kotlin
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.ServerSocket
+import java.net.Socket
+
+fun main() {
+    // Iniciar un servidor de sockets
+    val server = ServerSocket(9999)
+    println("Esperando conexiones...")
+    val client = server.accept()
+    println("Cliente conectado: ${client.inetAddress}")
+
+    // Leer datos del cliente
+    val reader = BufferedReader(InputStreamReader(client.inputStream))
+    var line: String?
+    while (reader.readLine().also { line = it } != null) {
+        println("Recibido del cliente: $line")
+    }
+
+    // Cerrar conexiones
+    reader.close()
+    client.close()
+    server.close()
+}
+```
+
+:::tip Más sobre `Sockets`en el tema 3
+Veremos más en detalle la programación de sockets en el tema 3. En este tema, ahondaremos en la creación de servidores y clientes, así como en la gestión de conexiones.
+:::
+
+### Memoria compartida
+
+Otra opción de comunicación entre procesos es la memoria compartida. Al utilizar memoria compartida, varios procesos pueden acceder a la misma región de memoria, lo que facilita la comunicación rápida entre ellos.
+
+Aquí hay un ejemplo de cómo usar memoria compartida en Kotlin:
+
+```kotlin
+import kotlinx.cinterop.*
+import platform.posix.*
+
+fun main() {
+    // Crear un segmento de memoria compartida
+    val shm = shmget(IPC_PRIVATE, 1024, IPC_CREAT or 0666)
+    if (shm == -1) {
+        perror("shmget")
+        return
+    }
+
+    // Adjuntar el segmento de memoria compartida
+    val data = shmat(shm, null, 0)
+    if (data == -1) {
+        perror("shmat")
+        return
+    }
+
+    // Escribir en la memoria compartida
+    memScoped {
+        val str = "Hola desde la memoria compartida"
+        memcpy(data, str.cstr, str.length + 1)
+    }
+
+    // Leer de la memoria compartida
+    println("Leído de la memoria compartida: ${data?.toKString()}")
+
+    // Detach y eliminar el segmento de memoria compartida
+    shmdt(data)
+    shmctl(shm, IPC_RMID, null)
+}
+```
+
+El método `shmget` se utiliza para crear un nuevo segmento de memoria compartida o acceder a uno existente. Devuelve un identificador de segmento que se puede utilizar para operaciones posteriores en ese segmento.
+
+El método `shmat` se utiliza para adjuntar el segmento de memoria compartida a la dirección de espacio de direcciones del proceso. Devuelve un puntero a la memoria compartida, que se puede utilizar para leer y escribir datos.
+
+Por su parte, el método `shmdt` se utiliza para desadjuntar el segmento de memoria compartida del espacio de direcciones del proceso.
+
+También tenemos `shmctl`, que sirve para realizar operaciones de control en el segmento de memoria compartida, como eliminarlo o cambiar sus permisos.
+
+En el ejemplo anterior, se crea un segmento de memoria compartida, se adjunta a la dirección de espacio de direcciones del proceso, se escribe en él y se lee de él. Finalmente, se desadjunta y se elimina el segmento de memoria compartida.
+
+## Sincronización de Procesos
+
+La sincronización de procesos se refiere a la coordinación de la ejecución de múltiples procesos para garantizar que accedan a recursos compartidos de manera controlada y evitar condiciones de carrera. Existen varias técnicas para lograr la sincronización entre procesos, incluyendo semáforos, mutexes y monitores.
+
+Veamos cada una de estas técnicas algo más en detalle.
+
+### Semáforos
+
+Los semáforos son variables utilizadas para controlar el acceso a recursos compartidos mediante la sincronización de procesos. Un semáforo puede tener dos estados: disponible (valor 1) o no disponible (valor 0). Cuando un proceso quiere acceder a un recurso, debe esperar hasta que el semáforo esté disponible.
+
+Aquí hay un ejemplo de cómo usar semáforos en Kotlin:
+
+```kotlin
+import kotlinx.coroutines.*
+import java.util.concurrent.Semaphore
+
+fun main() = runBlocking {
+    val semaphore = Semaphore(1)
+
+    launch {
+        semaphore.acquire()
+        println("Proceso 1: Accediendo al recurso compartido")
+        delay(1000)
+        println("Proceso 1: Liberando el recurso compartido")
+        semaphore.release()
+    }
+
+    launch {
+        semaphore.acquire()
+        println("Proceso 2: Accediendo al recurso compartido")
+        delay(1000)
+        println("Proceso 2: Liberando el recurso compartido")
+        semaphore.release()
+    }
+}
+```
+
+### Mutexes
+
+Los mutexes (mutual exclusion) son similares a los semáforos, pero están diseñados específicamente para garantizar que solo un proceso pueda acceder a un recurso compartido en un momento dado. Un mutex puede estar bloqueado o desbloqueado. Cuando un proceso bloquea un mutex, otros procesos deben esperar hasta que el mutex sea desbloqueado.
+
+Aquí hay un ejemplo de cómo usar mutexes en Kotlin:
+
+```kotlin
+import kotlinx.coroutines.*
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+
+fun main() = runBlocking {
+    val lock = ReentrantLock()
+
+    launch {
+        lock.withLock {
+            println("Proceso 1: Accediendo al recurso compartido")
+            delay(1000)
+            println("Proceso 1: Liberando el recurso compartido")
+        }
+    }
+
+    launch {
+        lock.withLock {
+            println("Proceso 2: Accediendo al recurso compartido")
+            delay(1000)
+            println("Proceso 2: Liberando el recurso compartido")
+        }
+    }
+}
+```
+
+### Monitores
+
+Los monitores son una abstracción de alto nivel para la sincronización de procesos. Un monitor es un objeto que encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. Los monitores utilizan mutexes y condiciones para garantizar que solo un proceso pueda acceder al recurso compartido a la vez.
+
+Aquí hay un ejemplo de cómo usar monitores en Kotlin:
+
+```kotlin
+import kotlinx.coroutines.*
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import java.util.concurrent.locks.Condition
+
+class Monitor {
+    private val lock = ReentrantLock()
+    private val condition: Condition = lock.newCondition()
+    private var recursoDisponible = false
+
+    fun accederRecurso() {
+        lock.withLock {
+            while (!recursoDisponible) {
+                condition.await()
+            }
+            println("Accediendo al recurso compartido")
+            recursoDisponible = false
+        }
+    }
+
+    fun liberarRecurso() {
+        lock.withLock {
+            println("Liberando el recurso compartido")
+            recursoDisponible = true
+            condition.signal()
+        }
+    }
+}
+
+fun main() = runBlocking {
+    val monitor = Monitor()
+
+    launch {
+        monitor.accederRecurso()
+        delay(1000)
+        monitor.liberarRecurso()
+    }
+
+    launch {
+        monitor.accederRecurso()
+        delay(1000)
+        monitor.liberarRecurso()
+    }
+}
+```
+
+En este ejemplo, la clase `Monitor` encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. Los procesos utilizan estos métodos para acceder y liberar el recurso compartido, garantizando que solo un proceso pueda acceder al recurso a la vez.
+
+:::info Más sobre sincronización en el tema 2
+Veremos más en detalle la sincronización en el tema 2, donde hablaremos de hilos y concurrencia. En este tema, profundizaremos en las técnicas de sincronización y cómo aplicarlas en aplicaciones concurrentes.
 :::
