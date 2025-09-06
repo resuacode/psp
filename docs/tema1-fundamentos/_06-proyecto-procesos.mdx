@@ -4,3 +4,73 @@ title: Proyectos: Gestión de Procesos en Kotlin
 ---
 
 # Proyectos: Gestión de Procesos en Kotlin
+
+Cada uno de los siguientes proyectos está diseñado para reforzar y aplicar los conceptos aprendidos en la gestión de procesos en Kotlin. Estos proyectos cubren desde la creación y manejo básico de procesos hasta la comunicación avanzada entre procesos y la integración con herramientas del sistema operativo.
+
+## Proyecto 1: Monitor de Procesos sencillo
+
+**Descripción:** Crea una aplicación que liste todos los procesos en ejecución en el sistema, mostrando su PID, nombre, usuario y uso de CPU/memoria.  
+**Requisitos:**
+- La aplicación debe permitir filtrar procesos por nombre o usuario.
+- Debe mostrar un resumen del uso total de CPU y memoria.
+- Debe permitir finalizar un proceso seleccionado.
+- Debe poder actualizar la lista de procesos al presionar un botón o seleccionar una opción de menú.
+- Debe tener una interfaz gráfica sencilla para mostrar la información. 
+    - También puede ser una aplicación de consola con menús interactivos, pero esta opción será menos valorada.
+- Utilizar `ProcessBuilder` para ejecutar comandos del sistema como `ps`, `top`, o `tasklist` según el sistema operativo.
+    - Debe detectarse el sistema operativo y ajustar los comandos en consecuencia.
+- Implementar manejo de errores para casos como permisos insuficientes al intentar finalizar un proceso.
+- Documentar el código y la lógica utilizada.
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, comandos del sistema operativo.
+
+## Proyecto 2: Herramienta de Automatización de Tareas
+
+**Descripción:** Desarrolla una herramienta que permita a los usuarios definir y ejecutar tareas automatizadas mediante scripts o comandos del sistema.  
+**Requisitos:**
+- La herramienta debe permitir a los usuarios crear, editar y eliminar tareas.
+- Cada tarea puede ser un comando del sistema o un script (por ejemplo, un script de shell o batch).
+- Debe permitir programar la ejecución de tareas en intervalos regulares (por ejemplo, cada hora, diariamente).
+- Debe registrar la salida y los errores de cada tarea en un archivo de log.
+- Debe tener una interfaz gráfica para gestionar las tareas y ver los logs.
+- Utilizar `ProcessBuilder` para ejecutar los comandos o scripts definidos por el usuario.
+- Implementar manejo de errores para casos como comandos inválidos o fallos en la ejecución.
+- Documentar el código y la lógica utilizada.
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `ProcessBuilder`.
+
+## Proyecto 3: Lanzador de Juegos o Aplicaciones
+
+**Descripción:** Crea una aplicación que permita a los usuarios lanzar juegos o aplicaciones instaladas en su sistema desde una interfaz centralizada.
+**Requisitos:**
+- La aplicación debe escanear el sistema en busca de juegos o aplicaciones instaladas y listarlas.
+- Debe permitir a los usuarios lanzar cualquier juego o aplicación con un solo clic.
+- Debe mostrar información básica sobre cada juego o aplicación, como nombre, icono y ruta de instalación.
+- Debe permitir a los usuarios agregar juegos o aplicaciones manualmente si no se detectan automáticamente.
+- Utilizar `ProcessBuilder` para lanzar los juegos o aplicaciones.
+- Implementar manejo de errores para casos como rutas inválidas o fallos al iniciar la aplicación.
+- Documentar el código y la lógica utilizada.
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `ProcessBuilder`.
+
+## Proyecto 4: Sistema de Comunicación entre Procesos (IPC)
+
+**Descripción:** Desarrolla una aplicación que demuestre la comunicación entre procesos utilizando pipes o sockets.
+**Requisitos:**
+- La aplicación debe consistir en dos procesos: un productor y un consumidor.
+- El proceso productor debe generar datos (por ejemplo, números aleatorios, texto) y enviarlos al proceso consumidor.
+- El proceso consumidor debe recibir los datos y procesarlos (por ejemplo, calcular la suma de números, contar palabras).
+- Utilizar pipes o sockets para la comunicación entre los procesos.
+- Implementar manejo de errores para casos como fallos en la comunicación o procesos que no responden.
+- Documentar el código y la lógica utilizada.
+**Tecnologías:** Kotlin, `ProcessBuilder`, pipes o sockets.
+
+## Proyecto 5: Procesador de ficheros concurrente
+
+**Descripción:** Crea una aplicación que procese múltiples ficheros de manera concurrente utilizando procesos separados.  
+**Requisitos:**
+- La aplicación debe permitir al usuario seleccionar múltiples ficheros para procesar.
+- Cada fichero debe ser procesado por un proceso separado, utilizando `ProcessBuilder`.
+- El procesamiento puede ser una operación simple, como contar líneas, palabras o caracteres. Debe ser el usuario el que elija cuál de estas operaciones quiere realizar.
+- La aplicación debe mostrar el progreso de cada proceso y el resultado final una vez que todos los procesos hayan terminado.
+- Implementar manejo de errores para casos como ficheros no encontrados o fallos en el procesamiento.
+- Documentar el código y la lógica utilizada.
+**Tecnologías:** Kotlin, `ProcessBuilder`, concurrencia.
+
