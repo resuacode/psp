@@ -47,3 +47,860 @@ Kotlin es un lenguaje de programación moderno, conciso y seguro que se ejecuta 
 - [Apuntes Kotlin](https://github.com/resuacode/kotlin-apuntes): Un repositorio con apuntes y ejemplos de Kotlin.
 
 - [Codelabs introductorios de Android](https://developer.android.com/courses/android-basics-compose/unit-1?hl=es-419): Codelabs introductorios de Android con Jetpack Compose.
+
+## Ejercicios prácticos
+
+### 1. Variables y tipos de datos
+
+**Ejercicio**: Crea un programa que declare variables de diferentes tipos (String, Int, Double, Boolean) usando tanto `var` como `val`. Incluye ejemplos de inferencia de tipos y conversiones explícitas.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+fun main() {
+    // Variables inmutables (val)
+    val nombre: String = "Juan"
+    val edad = 25 // Inferencia de tipo Int
+    val altura = 1.75 // Inferencia de tipo Double
+    val esEstudiante: Boolean = true
+    
+    // Variables mutables (var)
+    var saldo = 1000.0
+    var intentos = 0
+    
+    // Conversiones explícitas
+    val edadString = edad.toString()
+    val alturaInt = altura.toInt()
+    
+    println("Nombre: $nombre")
+    println("Edad: $edad años")
+    println("Altura: $altura metros")
+    println("Es estudiante: $esEstudiante")
+    println("Saldo actual: $saldo€")
+    
+    // Modificando variables mutables
+    saldo -= 50.0
+    intentos++
+    
+    println("Nuevo saldo: $saldo€")
+    println("Intentos realizados: $intentos")
+}
+```
+
+</details>
+
+### 2. Expresiones vs sentencias
+
+**Ejercicio**: Crea una función que determine la categoría de una persona según su edad usando expresiones `when` y `if` como expresiones (no como sentencias).
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+fun categoriaPersona(edad: Int): String {
+    return when {
+        edad < 0 -> "Edad inválida"
+        edad <= 12 -> "Niño"
+        edad <= 17 -> "Adolescente"
+        edad <= 64 -> "Adulto"
+        else -> "Adulto mayor"
+    }
+}
+
+fun descuentoEntrada(edad: Int): Double {
+    return if (edad < 18 || edad >= 65) 0.5 else 1.0
+}
+
+fun main() {
+    val edades = listOf(5, 16, 25, 70, -1)
+    
+    edades.forEach { edad ->
+        val categoria = categoriaPersona(edad)
+        val descuento = descuentoEntrada(edad)
+        println("Edad: $edad -> Categoría: $categoria, Descuento: ${(1-descuento)*100}%")
+    }
+}
+```
+
+</details>
+
+### 3. Funciones y lambdas
+
+**Ejercicio**: Implementa una calculadora simple usando funciones de orden superior. Crea funciones que reciban otras funciones como parámetros y usa lambdas para las operaciones.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+fun calculadora(a: Double, b: Double, operacion: (Double, Double) -> Double): Double {
+    return operacion(a, b)
+}
+
+fun aplicarOperaciones(numeros: List<Double>, operacion: (Double) -> Double): List<Double> {
+    return numeros.map(operacion)
+}
+
+fun main() {
+    val num1 = 10.0
+    val num2 = 3.0
+    
+    // Usando lambdas
+    val suma = calculadora(num1, num2) { x, y -> x + y }
+    val resta = calculadora(num1, num2) { x, y -> x - y }
+    val multiplicacion = calculadora(num1, num2) { x, y -> x * y }
+    val division = calculadora(num1, num2) { x, y -> if (y != 0.0) x / y else 0.0 }
+    
+    println("$num1 + $num2 = $suma")
+    println("$num1 - $num2 = $resta")
+    println("$num1 × $num2 = $multiplicacion")
+    println("$num1 ÷ $num2 = $division")
+    
+    // Aplicar operaciones a una lista
+    val numeros = listOf(1.0, 2.0, 3.0, 4.0, 5.0)
+    val cuadrados = aplicarOperaciones(numeros) { it * it }
+    val dobles = aplicarOperaciones(numeros) { it * 2 }
+    
+    println("Números originales: $numeros")
+    println("Cuadrados: $cuadrados")
+    println("Dobles: $dobles")
+}
+```
+
+</details>
+
+### 4. Null Safety
+
+**Ejercicio**: Crea un sistema de búsqueda de usuarios que maneje valores nulos de forma segura usando operadores de Kotlin como `?.`, `?:`, `!!` y `let`.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+data class Usuario(val id: Int, val nombre: String, val email: String?)
+
+class RepositorioUsuarios {
+    private val usuarios = listOf(
+        Usuario(1, "Ana", "ana@email.com"),
+        Usuario(2, "Carlos", null),
+        Usuario(3, "María", "maria@email.com")
+    )
+    
+    fun buscarPorId(id: Int): Usuario? {
+        return usuarios.find { it.id == id }
+    }
+    
+    fun buscarPorNombre(nombre: String): Usuario? {
+        return usuarios.find { it.nombre.equals(nombre, ignoreCase = true) }
+    }
+}
+
+fun procesarUsuario(usuario: Usuario?): String {
+    return usuario?.let { u ->
+        val emailInfo = u.email?.let { "Email: $it" } ?: "Sin email"
+        "Usuario: ${u.nombre} (ID: ${u.id}) - $emailInfo"
+    } ?: "Usuario no encontrado"
+}
+
+fun main() {
+    val repo = RepositorioUsuarios()
+    
+    // Búsqueda segura por ID
+    val usuario1 = repo.buscarPorId(1)
+    val usuario999 = repo.buscarPorId(999)
+    
+    println(procesarUsuario(usuario1))
+    println(procesarUsuario(usuario999))
+    
+    // Uso de operador Elvis
+    val nombreUsuario = usuario1?.nombre ?: "Anónimo"
+    println("Nombre: $nombreUsuario")
+    
+    // Uso seguro de let
+    repo.buscarPorId(2)?.let { usuario ->
+        println("Usuario encontrado: ${usuario.nombre}")
+        usuario.email?.let { email ->
+            println("Enviando email a: $email")
+        } ?: println("No se puede enviar email, dirección no disponible")
+    }
+}
+```
+
+</details>
+
+### 5. Clases y objetos
+
+**Ejercicio**: Diseña un sistema de cuentas bancarias con herencia. Crea una clase base `Cuenta` y clases derivadas `CuentaAhorro` y `CuentaCorriente` con diferentes comportamientos.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+abstract class Cuenta(
+    val numeroCuenta: String,
+    val titular: String,
+    protected var saldo: Double = 0.0
+) {
+    abstract fun calcularInteres(): Double
+    
+    open fun depositar(cantidad: Double): Boolean {
+        return if (cantidad > 0) {
+            saldo += cantidad
+            println("Depósito de $cantidad€ realizado. Nuevo saldo: $saldo€")
+            true
+        } else {
+            println("La cantidad debe ser positiva")
+            false
+        }
+    }
+    
+    abstract fun retirar(cantidad: Double): Boolean
+    
+    fun consultarSaldo(): Double = saldo
+    
+    override fun toString(): String {
+        return "Cuenta $numeroCuenta - Titular: $titular - Saldo: $saldo€"
+    }
+}
+
+class CuentaAhorro(
+    numeroCuenta: String,
+    titular: String,
+    saldoInicial: Double = 0.0,
+    private val tasaInteres: Double = 0.02
+) : Cuenta(numeroCuenta, titular, saldoInicial) {
+    
+    override fun calcularInteres(): Double = saldo * tasaInteres
+    
+    override fun retirar(cantidad: Double): Boolean {
+        return if (cantidad > 0 && cantidad <= saldo) {
+            saldo -= cantidad
+            println("Retiro de $cantidad€ realizado. Nuevo saldo: $saldo€")
+            true
+        } else {
+            println("Fondos insuficientes o cantidad inválida")
+            false
+        }
+    }
+}
+
+class CuentaCorriente(
+    numeroCuenta: String,
+    titular: String,
+    saldoInicial: Double = 0.0,
+    private val limiteSobregiro: Double = 500.0
+) : Cuenta(numeroCuenta, titular, saldoInicial) {
+    
+    override fun calcularInteres(): Double = 0.0 // Sin intereses
+    
+    override fun retirar(cantidad: Double): Boolean {
+        val saldoDisponible = saldo + limiteSobregiro
+        return if (cantidad > 0 && cantidad <= saldoDisponible) {
+            saldo -= cantidad
+            println("Retiro de $cantidad€ realizado. Nuevo saldo: $saldo€")
+            true
+        } else {
+            println("Límite de sobregiro excedido o cantidad inválida")
+            false
+        }
+    }
+}
+
+fun main() {
+    val cuentaAhorro = CuentaAhorro("AH001", "María González", 1000.0)
+    val cuentaCorriente = CuentaCorriente("CC001", "Juan Pérez", 500.0, 300.0)
+    
+    println(cuentaAhorro)
+    println(cuentaCorriente)
+    
+    cuentaAhorro.depositar(200.0)
+    cuentaAhorro.retirar(150.0)
+    println("Interés generado: ${cuentaAhorro.calcularInteres()}€")
+    
+    cuentaCorriente.retirar(700.0) // Usa sobregiro
+    cuentaCorriente.retirar(200.0) // Excede límite
+}
+```
+
+</details>
+
+### 6. Data classes
+
+**Ejercicio**: Crea un sistema de gestión de productos usando data classes. Implementa operaciones de copia, destructuring y comparación.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+data class Producto(
+    val id: Int,
+    val nombre: String,
+    val precio: Double,
+    val categoria: String,
+    val stock: Int = 0
+) {
+    fun aplicarDescuento(porcentaje: Double): Producto {
+        val nuevoPrecio = precio * (1 - porcentaje / 100)
+        return copy(precio = nuevoPrecio)
+    }
+    
+    fun estaDisponible(): Boolean = stock > 0
+}
+
+data class Pedido(
+    val id: Int,
+    val productos: List<Producto>,
+    val fecha: String
+) {
+    fun calcularTotal(): Double = productos.sumOf { it.precio }
+    
+    fun contarProductos(): Int = productos.size
+}
+
+fun main() {
+    // Crear productos
+    val laptop = Producto(1, "Laptop Gaming", 1200.0, "Electrónicos", 5)
+    val mouse = Producto(2, "Mouse Inalámbrico", 25.0, "Accesorios", 10)
+    val teclado = Producto(3, "Teclado Mecánico", 80.0, "Accesorios", 3)
+    
+    println("Producto original:")
+    println(laptop)
+    
+    // Usar copy para crear variaciones
+    val laptopOferta = laptop.aplicarDescuento(15.0)
+    val laptopSinStock = laptop.copy(stock = 0)
+    
+    println("\nProducto con descuento:")
+    println(laptopOferta)
+    
+    // Destructuring
+    val (id, nombre, precio, categoria, stock) = laptop
+    println("\nDestructuring:")
+    println("ID: $id, Nombre: $nombre, Precio: $precio€")
+    
+    // Comparación automática
+    val laptopCopia = laptop.copy()
+    println("\n¿Son iguales? ${laptop == laptopCopia}")
+    println("¿Mismo hash? ${laptop.hashCode() == laptopCopia.hashCode()}")
+    
+    // Crear pedido
+    val pedido = Pedido(
+        1, 
+        listOf(laptop, mouse, teclado),
+        "2024-01-15"
+    )
+    
+    println("\nPedido:")
+    println("Total productos: ${pedido.contarProductos()}")
+    println("Total a pagar: ${pedido.calcularTotal()}€")
+    
+    // Usar destructuring en listas
+    pedido.productos.forEach { (id, nombre, precio) ->
+        println("- $nombre: $precio€")
+    }
+}
+```
+
+</details>
+
+### 7. Sealed classes
+
+**Ejercicio**: Implementa un sistema de estados de conexión de red usando sealed classes y maneja cada estado de forma exhaustiva con `when`.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+sealed class EstadoRed {
+    object Desconectado : EstadoRed()
+    object Conectando : EstadoRed()
+    data class Conectado(val velocidad: Int, val tipo: String) : EstadoRed()
+    data class Error(val mensaje: String, val codigo: Int) : EstadoRed()
+    data class Reconectando(val intento: Int, val maxIntentos: Int) : EstadoRed()
+}
+
+class GestorRed {
+    private var estadoActual: EstadoRed = EstadoRed.Desconectado
+    
+    fun cambiarEstado(nuevoEstado: EstadoRed) {
+        estadoActual = nuevoEstado
+        mostrarEstado()
+    }
+    
+    fun mostrarEstado() {
+        val mensaje = when (val estado = estadoActual) {
+            is EstadoRed.Desconectado -> {
+                "❌ Sin conexión a internet"
+            }
+            is EstadoRed.Conectando -> {
+                "🔄 Estableciendo conexión..."
+            }
+            is EstadoRed.Conectado -> {
+                "✅ Conectado - ${estado.tipo} a ${estado.velocidad} Mbps"
+            }
+            is EstadoRed.Error -> {
+                "⚠️ Error ${estado.codigo}: ${estado.mensaje}"
+            }
+            is EstadoRed.Reconectando -> {
+                "🔄 Reintentando conexión (${estado.intento}/${estado.maxIntentos})"
+            }
+        }
+        println(mensaje)
+    }
+    
+    fun puedeDescargar(): Boolean {
+        return when (estadoActual) {
+            is EstadoRed.Conectado -> true
+            else -> false
+        }
+    }
+    
+    fun obtenerVelocidad(): Int? {
+        return when (val estado = estadoActual) {
+            is EstadoRed.Conectado -> estado.velocidad
+            else -> null
+        }
+    }
+}
+
+fun main() {
+    val gestor = GestorRed()
+    
+    // Simular diferentes estados
+    gestor.cambiarEstado(EstadoRed.Conectando)
+    
+    gestor.cambiarEstado(EstadoRed.Error("Timeout de conexión", 408))
+    
+    gestor.cambiarEstado(EstadoRed.Reconectando(1, 3))
+    gestor.cambiarEstado(EstadoRed.Reconectando(2, 3))
+    
+    gestor.cambiarEstado(EstadoRed.Conectado(100, "WiFi"))
+    
+    println("\n¿Puede descargar? ${gestor.puedeDescargar()}")
+    println("Velocidad actual: ${gestor.obtenerVelocidad()} Mbps")
+    
+    gestor.cambiarEstado(EstadoRed.Desconectado)
+    println("¿Puede descargar? ${gestor.puedeDescargar()}")
+}
+```
+
+</details>
+
+### 8. Scope functions
+
+**Ejercicio**: Crea un configurador de perfil de usuario que use diferentes scope functions (`let`, `run`, `with`, `apply`, `also`) de manera apropiada.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+data class PerfilUsuario(
+    var nombre: String = "",
+    var email: String = "",
+    var edad: Int = 0,
+    var biografia: String = "",
+    var preferencias: MutableMap<String, Any> = mutableMapOf()
+) {
+    fun esValido(): Boolean = nombre.isNotBlank() && email.contains("@") && edad > 0
+}
+
+class ConfiguradorPerfil {
+    
+    fun crearPerfilBasico(nombre: String, email: String): PerfilUsuario? {
+        return nombre.takeIf { it.isNotBlank() }?.let { nombreValido ->
+            email.takeIf { it.contains("@") }?.let { emailValido ->
+                PerfilUsuario().apply {
+                    this.nombre = nombreValido
+                    this.email = emailValido
+                }
+            }
+        }
+    }
+    
+    fun configurarPerfil(perfil: PerfilUsuario, configuracion: PerfilUsuario.() -> Unit): PerfilUsuario {
+        return perfil.apply(configuracion)
+    }
+    
+    fun validarYProcesar(perfil: PerfilUsuario?): String {
+        return perfil?.takeIf { it.esValido() }?.run {
+            "Perfil válido para $nombre ($email)"
+        } ?: "Perfil inválido o nulo"
+    }
+}
+
+fun main() {
+    val configurador = ConfiguradorPerfil()
+    
+    // Usando let para transformación segura
+    val perfil1 = configurador.crearPerfilBasico("Ana García", "ana@email.com")?.let { perfil ->
+        configurador.configurarPerfil(perfil) {
+            edad = 28
+            biografia = "Desarrolladora de software apasionada por Kotlin"
+            preferencias["tema"] = "oscuro"
+            preferencias["idioma"] = "español"
+        }
+    }
+    
+    // Usando also para efectos secundarios
+    perfil1?.also { 
+        println("Perfil creado exitosamente")
+        println("Datos: $it")
+    }
+    
+    // Usando run para ejecutar bloque con contexto
+    val mensaje = perfil1?.run {
+        with(preferencias) {
+            "Usuario $nombre prefiere tema ${get("tema")} en ${get("idioma")}"
+        }
+    } ?: "No hay información de preferencias"
+    
+    println(mensaje)
+    
+    // Usando let para operaciones condicionales
+    perfil1?.preferencias?.get("tema")?.let { tema ->
+        println("Aplicando tema: $tema")
+    }
+    
+    // Validación final
+    println(configurador.validarYProcesar(perfil1))
+    
+    // Ejemplo con perfil inválido
+    val perfilInvalido = PerfilUsuario(nombre = "", email = "email-invalido")
+    println(configurador.validarYProcesar(perfilInvalido))
+}
+```
+
+</details>
+
+### 9. Colecciones (Arrays, Listas, Maps, Sets)
+
+**Ejercicio**: Implementa un sistema de gestión de biblioteca que use diferentes tipos de colecciones y operaciones funcionales para gestionar libros, autores y préstamos.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+data class Libro(
+    val isbn: String,
+    val titulo: String,
+    val autor: String,
+    val año: Int,
+    val genero: String
+)
+
+data class Prestamo(
+    val isbn: String,
+    val usuario: String,
+    val fechaPrestamo: String,
+    val fechaDevolucion: String? = null
+)
+
+class Biblioteca {
+    private val libros = mutableListOf<Libro>()
+    private val prestamos = mutableListOf<Prestamo>()
+    private val autoresPorGenero = mutableMapOf<String, MutableSet<String>>()
+    
+    fun agregarLibro(libro: Libro) {
+        libros.add(libro)
+        autoresPorGenero.getOrPut(libro.genero) { mutableSetOf() }.add(libro.autor)
+    }
+    
+    fun buscarPorAutor(autor: String): List<Libro> {
+        return libros.filter { it.autor.contains(autor, ignoreCase = true) }
+    }
+    
+    fun buscarPorGenero(genero: String): List<Libro> {
+        return libros.filter { it.genero.equals(genero, ignoreCase = true) }
+    }
+    
+    fun obtenerLibrosDisponibles(): List<Libro> {
+        val librosEnPrestamo = prestamos
+            .filter { it.fechaDevolucion == null }
+            .map { it.isbn }
+            .toSet()
+        
+        return libros.filterNot { it.isbn in librosEnPrestamo }
+    }
+    
+    fun prestarLibro(isbn: String, usuario: String, fecha: String): Boolean {
+        val libroDisponible = obtenerLibrosDisponibles().any { it.isbn == isbn }
+        return if (libroDisponible) {
+            prestamos.add(Prestamo(isbn, usuario, fecha))
+            true
+        } else {
+            false
+        }
+    }
+    
+    fun devolverLibro(isbn: String, fechaDevolucion: String): Boolean {
+        val prestamo = prestamos.find { it.isbn == isbn && it.fechaDevolucion == null }
+        return prestamo?.let {
+            prestamos[prestamos.indexOf(it)] = it.copy(fechaDevolucion = fechaDevolucion)
+            true
+        } ?: false
+    }
+    
+    fun obtenerEstadisticas(): Map<String, Any> {
+        val totalLibros = libros.size
+        val librosPrestados = prestamos.count { it.fechaDevolucion == null }
+        val autorMasPopular = libros.groupBy { it.autor }
+            .maxByOrNull { it.value.size }?.key ?: "N/A"
+        
+        return mapOf(
+            "totalLibros" to totalLibros,
+            "librosDisponibles" to (totalLibros - librosPrestados),
+            "librosPrestados" to librosPrestados,
+            "autorMasPopular" to autorMasPopular,
+            "generos" to autoresPorGenero.keys.toList()
+        )
+    }
+    
+    fun obtenerLibrosPorDecada(): Map<String, List<Libro>> {
+        return libros.groupBy { "${(it.año / 10) * 10}s" }
+    }
+}
+
+fun main() {
+    val biblioteca = Biblioteca()
+    
+    // Agregar libros
+    arrayOf(
+        Libro("978-1", "Cien años de soledad", "Gabriel García Márquez", 1967, "Realismo mágico"),
+        Libro("978-2", "1984", "George Orwell", 1949, "Distopía"),
+        Libro("978-3", "El amor en los tiempos del cólera", "Gabriel García Márquez", 1985, "Romance"),
+        Libro("978-4", "Rebelión en la granja", "George Orwell", 1945, "Fábula"),
+        Libro("978-5", "Crónica de una muerte anunciada", "Gabriel García Márquez", 1981, "Novela")
+    ).forEach { biblioteca.agregarLibro(it) }
+    
+    // Buscar libros
+    println("=== Libros de García Márquez ===")
+    biblioteca.buscarPorAutor("García Márquez").forEach { libro ->
+        println("${libro.titulo} (${libro.año})")
+    }
+    
+    // Realizar préstamos
+    println("\n=== Préstamos ===")
+    biblioteca.prestarLibro("978-1", "Ana López", "2024-01-15")
+    biblioteca.prestarLibro("978-2", "Carlos Ruiz", "2024-01-16")
+    
+    // Mostrar libros disponibles
+    println("\n=== Libros disponibles ===")
+    biblioteca.obtenerLibrosDisponibles().forEach { libro ->
+        println("${libro.titulo} - ${libro.autor}")
+    }
+    
+    // Devolver libro
+    biblioteca.devolverLibro("978-1", "2024-01-30")
+    
+    // Estadísticas
+    println("\n=== Estadísticas ===")
+    val stats = biblioteca.obtenerEstadisticas()
+    stats.forEach { (clave, valor) ->
+        println("$clave: $valor")
+    }
+    
+    // Libros por década
+    println("\n=== Libros por década ===")
+    biblioteca.obtenerLibrosPorDecada().forEach { (decada, libros) ->
+        println("$decada: ${libros.map { it.titulo }}")
+    }
+}
+```
+
+</details>
+
+### 10. Ejercicio integrador
+
+**Ejercicio**: Crea un sistema completo de gestión de tareas que integre todos los conceptos aprendidos: clases, data classes, sealed classes, null safety, colecciones y scope functions.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+sealed class Prioridad(val valor: Int, val nombre: String) {
+    object Baja : Prioridad(1, "Baja")
+    object Media : Prioridad(2, "Media")
+    object Alta : Prioridad(3, "Alta")
+    object Critica : Prioridad(4, "Crítica")
+}
+
+sealed class EstadoTarea {
+    object Pendiente : EstadoTarea()
+    object EnProgreso : EstadoTarea()
+    object Completada : EstadoTarea()
+    data class Cancelada(val motivo: String) : EstadoTarea()
+}
+
+data class Tarea(
+    val id: Int,
+    val titulo: String,
+    val descripcion: String?,
+    val prioridad: Prioridad,
+    val fechaCreacion: LocalDate = LocalDate.now(),
+    val fechaLimite: LocalDate?,
+    var estado: EstadoTarea = EstadoTarea.Pendiente,
+    val etiquetas: Set<String> = emptySet()
+) {
+    fun estaVencida(): Boolean = fechaLimite?.isBefore(LocalDate.now()) == true
+    
+    fun diasRestantes(): Int? = fechaLimite?.let { 
+        java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), it).toInt()
+    }
+}
+
+class GestorTareas {
+    private val tareas = mutableListOf<Tarea>()
+    private var siguienteId = 1
+    
+    fun crearTarea(
+        titulo: String,
+        descripcion: String? = null,
+        prioridad: Prioridad = Prioridad.Media,
+        fechaLimite: LocalDate? = null,
+        etiquetas: Set<String> = emptySet()
+    ): Tarea? {
+        return titulo.takeIf { it.isNotBlank() }?.let {
+            Tarea(
+                id = siguienteId++,
+                titulo = it.trim(),
+                descripcion = descripcion?.takeIf { desc -> desc.isNotBlank() },
+                prioridad = prioridad,
+                fechaLimite = fechaLimite,
+                etiquetas = etiquetas
+            ).also { tarea ->
+                tareas.add(tarea)
+                println("✅ Tarea creada: ${tarea.titulo}")
+            }
+        }
+    }
+    
+    fun obtenerTarea(id: Int): Tarea? = tareas.find { it.id == id }
+    
+    fun actualizarEstado(id: Int, nuevoEstado: EstadoTarea): Boolean {
+        return obtenerTarea(id)?.let { tarea ->
+            val indice = tareas.indexOf(tarea)
+            tareas[indice] = tarea.copy(estado = nuevoEstado)
+            true
+        } ?: false
+    }
+    
+    fun filtrarTareas(
+        estado: EstadoTarea? = null,
+        prioridad: Prioridad? = null,
+        etiqueta: String? = null
+    ): List<Tarea> {
+        return tareas.filter { tarea ->
+            (estado == null || tarea.estado == estado) &&
+            (prioridad == null || tarea.prioridad == prioridad) &&
+            (etiqueta == null || etiqueta in tarea.etiquetas)
+        }
+    }
+    
+    fun obtenerTareasVencidas(): List<Tarea> {
+        return tareas.filter { it.estaVencida() && it.estado != EstadoTarea.Completada }
+    }
+    
+    fun obtenerResumenPorPrioridad(): Map<Prioridad, List<Tarea>> {
+        return tareas.groupBy { it.prioridad }
+    }
+    
+    fun obtenerEstadisticas(): Map<String, Any> {
+        val totalTareas = tareas.size
+        val completadas = tareas.count { it.estado is EstadoTarea.Completada }
+        val pendientes = tareas.count { it.estado is EstadoTarea.Pendiente }
+        val vencidas = obtenerTareasVencidas().size
+        
+        return mapOf(
+            "total" to totalTareas,
+            "completadas" to completadas,
+            "pendientes" to pendientes,
+            "vencidas" to vencidas,
+            "porcentajeCompletado" to if (totalTareas > 0) (completadas * 100) / totalTareas else 0
+        )
+    }
+    
+    fun generarReporte(): String {
+        return buildString {
+            appendLine("=== REPORTE DE TAREAS ===")
+            appendLine()
+            
+            // Estadísticas generales
+            val stats = obtenerEstadisticas()
+            appendLine("📊 Estadísticas:")
+            stats.forEach { (clave, valor) ->
+                appendLine("   $clave: $valor")
+            }
+            appendLine()
+            
+            // Tareas vencidas
+            obtenerTareasVencidas().takeIf { it.isNotEmpty() }?.let { vencidas ->
+                appendLine("⚠️ Tareas vencidas (${vencidas.size}):")
+                vencidas.forEach { tarea ->
+                    appendLine("   - ${tarea.titulo} (${tarea.diasRestantes()} días)")
+                }
+                appendLine()
+            }
+            
+            // Tareas por prioridad
+            appendLine("📋 Tareas por prioridad:")
+            obtenerResumenPorPrioridad().forEach { (prioridad, tareas) ->
+                appendLine("   ${prioridad.nombre}: ${tareas.size} tareas")
+            }
+        }
+    }
+}
+
+fun main() {
+    val gestor = GestorTareas().apply {
+        // Crear tareas de ejemplo
+        crearTarea(
+            titulo = "Implementar API REST",
+            descripcion = "Desarrollar endpoints para gestión de usuarios",
+            prioridad = Prioridad.Alta,
+            fechaLimite = LocalDate.now().plusDays(7),
+            etiquetas = setOf("desarrollo", "backend")
+        )
+        
+        crearTarea(
+            titulo = "Revisar documentación",
+            prioridad = Prioridad.Media,
+            fechaLimite = LocalDate.now().minusDays(2), // Vencida
+            etiquetas = setOf("documentación")
+        )
+        
+        crearTarea(
+            titulo = "Preparar presentación",
+            descripcion = "Slides para reunión con cliente",
+            prioridad = Prioridad.Critica,
+            fechaLimite = LocalDate.now().plusDays(1),
+            etiquetas = setOf("presentación", "cliente")
+        )
+    }
+    
+    // Actualizar estados
+    gestor.actualizarEstado(1, EstadoTarea.EnProgreso)
+    gestor.actualizarEstado(3, EstadoTarea.Completada)
+    
+    // Mostrar tareas pendientes
+    println("\n=== TAREAS PENDIENTES ===")
+    gestor.filtrarTareas(estado = EstadoTarea.Pendiente).forEach { tarea ->
+        val diasRestantes = tarea.diasRestantes()?.let { " ($it días)" } ?: ""
+        val vencida = if (tarea.estaVencida()) " [VENCIDA]" else ""
+        println("${tarea.titulo} - ${tarea.prioridad.nombre}$diasRestantes$vencida")
+    }
+    
+    // Generar reporte completo
+    println("\n${gestor.generarReporte()}")
+    
+    // Buscar por etiqueta
+    println("=== TAREAS DE DESARROLLO ===")
+    gestor.filtrarTareas(etiqueta = "desarrollo").forEach { tarea ->
+        println("${tarea.titulo} - Estado: ${tarea.estado::class.simpleName}")
+    }
+}
+```
+
+</details>
