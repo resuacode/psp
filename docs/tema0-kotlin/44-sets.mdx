@@ -71,12 +71,7 @@ val numerosImpares = setOf(1, 3, 5, 7, 9)
 val union = numeros.union(numerosPares)
 val interseccion = numeros.intersect(numerosImpares)
 val diferencia = numeros.subtract(numerosPares)
-val diferenciaSimetrica = numeros.symmetricDifference(numerosPares)
 val contieneTodos = numeros.containsAll(numerosPares)
-val contieneAlguno = numeros.containsAny(numerosPares)
-val esSubconjunto = numeros.isSubset(numerosPares)
-val esSuperconjunto = numeros.isSuperset(numerosPares)
-val esDisjunto = numeros.isDisjoint(numerosPares)
 val esVacio = numeros.isEmpty()
 ```
 
@@ -87,12 +82,7 @@ Estas operaciones sirven para lo siguiente:
 - `union()`: Devuelve un `Set` que contiene todos los elementos de los dos `Set`.
 - `intersect()`: Devuelve un `Set` que contiene los elementos comunes de los dos `Set`.
 - `subtract()`: Devuelve un `Set` que contiene los elementos del primer `Set` que no están en el segundo `Set`.
-- `symmetricDifference()`: Devuelve un `Set` que contiene los elementos que están en uno de los `Set` pero no en ambos.
 - `containsAll()`: Comprueba si un `Set` contiene todos los elementos de otro `Set`.
-- `containsAny()`: Comprueba si un `Set` contiene al menos un elemento de otro `Set`.
-- `isSubset()`: Comprueba si un `Set` es un subconjunto de otro `Set`.
-- `isSuperset()`: Comprueba si un `Set` es un superconjunto de otro `Set`.
-- `isDisjoint()`: Comprueba si dos `Set` son disjuntos, es decir, si no tienen elementos en común.
 - `isEmpty()`: Comprueba si un `Set` está vacío.
 
 Los `Set` en Kotlin son una forma eficiente de almacenar y manipular colecciones de elementos únicos. Puedes utilizar las operaciones proporcionadas por los `Set` para realizar operaciones comunes, como unir, intersecar, restar y comparar `Set` entre sí.
