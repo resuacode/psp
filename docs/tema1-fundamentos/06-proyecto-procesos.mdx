@@ -57,10 +57,11 @@ Cada uno de los siguientes proyectos está diseñado para reforzar y aplicar los
 - La aplicación debe consistir en dos procesos: un productor y un consumidor.
 - El proceso productor debe generar datos (por ejemplo, números aleatorios, texto) y enviarlos al proceso consumidor.
 - El proceso consumidor debe recibir los datos y procesarlos (por ejemplo, calcular la suma de números, contar palabras).
+- Debe ser posible seleccionar entre varias posibilidades de procesos productores y mostrar el progreso en la interfaz.
 - Utilizar pipes o sockets para la comunicación entre los procesos.
 - Implementar manejo de errores para casos como fallos en la comunicación o procesos que no responden.
 - Documentar el código y la lógica utilizada.
-**Tecnologías:** Kotlin, `ProcessBuilder`, pipes o sockets.
+**Tecnologías:** Kotlin, `ProcessBuilder`, JavaFX o Compose for Desktop, pipes o sockets.
 
 ## Proyecto 5: Procesador de ficheros concurrente
 
@@ -68,9 +69,10 @@ Cada uno de los siguientes proyectos está diseñado para reforzar y aplicar los
 **Requisitos:**
 - La aplicación debe permitir al usuario seleccionar múltiples ficheros para procesar.
 - Cada fichero debe ser procesado por un proceso separado, utilizando `ProcessBuilder`.
-- El procesamiento puede ser una operación simple, como contar líneas, palabras o caracteres. Debe ser el usuario el que elija cuál de estas operaciones quiere realizar.
+- El procesamiento puede ser una operación simple, como contar líneas, palabras o caracteres. Debe ser el usuario el que elija cuál de estas operaciones quiere realizar (pueden ser una o más de cada vez).
 - La aplicación debe mostrar el progreso de cada proceso y el resultado final una vez que todos los procesos hayan terminado.
 - Implementar manejo de errores para casos como ficheros no encontrados o fallos en el procesamiento.
+- La aplicación debe mostrar la selección de los procesos a realizar sobre el fichero y mostrar el progreso en la interfaz.
 - Documentar el código y la lógica utilizada.
-**Tecnologías:** Kotlin, `ProcessBuilder`, concurrencia.
+**Tecnologías:** Kotlin, `ProcessBuilder`, JavaFX o Compose for Desktop, concurrencia.
 
