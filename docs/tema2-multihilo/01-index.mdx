@@ -27,3 +27,661 @@ Esta unidad profundizará en la programación con hilos, que es esencial para el
 4. Depuración y Documentación de Aplicaciones Multihilo
     - Estrategias específicas para la depuración de aplicaciones multihilo (puntos de interrupción condicionales, inspección de variables compartidas). 
     - Prácticas de documentación para código concurrente.
+
+5. Corrutinas en Kotlin
+    - Introducción a las corrutinas y sus ventajas sobre hilos tradicionales.
+    - Conceptos básicos: suspend functions, builders (launch, async, runBlocking).
+    - Contextos y dispatchers.
+    - Cancelación y manejo de excepciones.
+    - Channels y Flow para comunicación entre corrutinas.
+
+6. Corrutinas de Kotlin en Android
+    - Integración de corrutinas en aplicaciones Android.
+    - Uso de corrutinas con componentes de arquitectura (ViewModel, LiveData).
+    - Manejo del ciclo de vida y cancelación automática.
+    - Ejemplos prácticos de uso en tareas comunes (peticiones de red, acceso a base de datos).
+
+## Ejercicios prácticos
+
+:::info
+Los siguientes ejercicios están diseñados para practicar la creación, gestión y sincronización de hilos en Kotlin, así como el uso de corrutinas. Cada uno incluye una solución oculta que puedes consultar cuando lo necesites.
+:::
+
+### Ejercicio 1: Crear y ejecutar hilos básicos
+**Enunciado:** Crea un programa que lance 5 hilos, cada uno imprimiendo su nombre y un número del 1 al 5 con una pausa de 500ms entre cada número.
+**Requisitos:**
+- Usar la clase Thread o la función thread() de Kotlin.
+- Cada hilo debe tener un nombre descriptivo.
+- Esperar a que todos los hilos terminen antes de finalizar el programa.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="Main.kt"
+import kotlin.concurrent.thread
+
+fun main() {
+    val threads = List(5) { id ->
+        thread(name = "Hilo-$id") {
+            repeat(5) { num ->
+                println("[${Thread.currentThread().name}] Número: ${num + 1}")
+                Thread.sleep(500)
+            }
+        }
+    }
+    
+    // Esperar a que todos terminen
+    threads.forEach { it.join() }
+    println("Todos los hilos han terminado")
+}
+```
+</details>
+
+### Ejercicio 2: Contador compartido con sincronización
+**Enunciado:** Implementa una clase `SafeCounter` que sea thread-safe y permita incrementar un contador desde múltiples hilos. Crea 10 hilos que incrementen el contador 1000 veces cada uno.
+**Requisitos:**
+- Usar @Synchronized o synchronized.
+- El resultado final debe ser siempre 10000.
+- Implementar prueba unitaria que verifique la corrección.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="SafeCounter.kt"
+class SafeCounter {
+    private var count = 0
+    
+    @Synchronized
+    fun increment() {
+        count++
+    }
+    
+    @Synchronized
+    fun getCount() = count
+}
+```
+
+```kotlin title="Main.kt"
+fun main() {
+    val counter = SafeCounter()
+    
+    val threads = List(10) {
+        Thread {
+            repeat(1000) {
+                counter.increment()
+            }
+        }
+    }
+    
+    threads.forEach { it.start() }
+    threads.forEach { it.join() }
+    
+    println("Contador final: ${counter.getCount()}") // Siempre 10000
+}
+```
+
+```kotlin title="SafeCounterTest.kt"
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertEquals
+
+class SafeCounterTest {
+    @Test
+    fun `test concurrent increments`() {
+        val counter = SafeCounter()
+        val threads = List(10) {
+            Thread {
+                repeat(1000) {
+                    counter.increment()
+                }
+            }
+        }
+        
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+        
+        assertEquals(10000, counter.getCount())
+    }
+}
+```
+</details>
+
+### Ejercicio 3: Productor-Consumidor con BlockingQueue
+**Enunciado:** Implementa un sistema productor-consumidor donde 2 productores generan números aleatorios y 3 consumidores los procesan. Usa `BlockingQueue` para la comunicación.
+**Requisitos:**
+- Usar ArrayBlockingQueue con capacidad de 10.
+- Los productores deben generar 20 números cada uno.
+- Los consumidores deben mostrar qué número procesan.
+- Implementar señal de finalización.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ProducerConsumer.kt"
+import java.util.concurrent.ArrayBlockingQueue
+import kotlin.concurrent.thread
+import kotlin.random.Random
+
+fun main() {
+    val queue = ArrayBlockingQueue<Int>(10)
+    val POISON_PILL = -1
+    
+    // Productores
+    val producers = List(2) { id ->
+        thread(name = "Productor-$id") {
+            repeat(20) {
+                val num = Random.nextInt(100)
+                queue.put(num)
+                println("[P-$id] Produjo: $num (Cola: ${queue.size})")
+                Thread.sleep(100)
+            }
+        }
+    }
+    
+    // Consumidores
+    val consumers = List(3) { id ->
+        thread(name = "Consumidor-$id") {
+            while (true) {
+                val num = queue.take()
+                if (num == POISON_PILL) {
+                    queue.put(POISON_PILL) // Pasar la señal
+                    break
+                }
+                println("[C-$id] Consumió: $num")
+                Thread.sleep(150)
+            }
+        }
+    }
+    
+    // Esperar a productores y enviar señal de fin
+    producers.forEach { it.join() }
+    queue.put(POISON_PILL)
+    
+    // Esperar a consumidores
+    consumers.forEach { it.join() }
+    println("Sistema finalizado")
+}
+```
+</details>
+
+### Ejercicio 4: Pool de hilos con ExecutorService
+**Enunciado:** Crea un pool de 4 hilos que procese 20 tareas. Cada tarea simula un cálculo que tarda entre 500ms y 2000ms. Muestra estadísticas al finalizar.
+**Requisitos:**
+- Usar Executors.newFixedThreadPool(4).
+- Registrar el tiempo de inicio y fin de cada tarea.
+- Mostrar tiempo total de ejecución.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ThreadPoolExample.kt"
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+
+fun main() {
+    val executor = Executors.newFixedThreadPool(4)
+    val completedTasks = AtomicInteger(0)
+    val startTime = System.currentTimeMillis()
+    
+    repeat(20) { id ->
+        executor.submit {
+            val taskStart = System.currentTimeMillis()
+            println("[${Thread.currentThread().name}] Tarea $id iniciada")
+            
+            Thread.sleep((500..2000).random().toLong())
+            
+            val taskEnd = System.currentTimeMillis()
+            val completed = completedTasks.incrementAndGet()
+            println("[${Thread.currentThread().name}] Tarea $id completada " +
+                    "en ${taskEnd - taskStart}ms ($completed/20)")
+        }
+    }
+    
+    executor.shutdown()
+    executor.awaitTermination(1, TimeUnit.MINUTES)
+    
+    val totalTime = System.currentTimeMillis() - startTime
+    println("\n=== Estadísticas ===")
+    println("Tareas completadas: ${completedTasks.get()}")
+    println("Tiempo total: ${totalTime}ms")
+}
+```
+</details>
+
+### Ejercicio 5: Detección y prevención de deadlock
+**Enunciado:** Crea dos cuentas bancarias y dos hilos que intenten transferir dinero entre ellas simultáneamente. Implementa una solución que evite el deadlock ordenando los locks.
+**Requisitos:**
+- Clase Account con lock.
+- Función transfer que transfiera dinero entre cuentas.
+- Prevenir deadlock ordenando los locks por ID.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="BankTransfer.kt"
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+
+data class Account(val id: Int, var balance: Double) {
+    val lock = ReentrantLock()
+}
+
+fun transfer(from: Account, to: Account, amount: Double) {
+    // Ordenar locks por ID para evitar deadlock
+    val (first, second) = if (from.id < to.id) {
+        Pair(from, to)
+    } else {
+        Pair(to, from)
+    }
+    
+    first.lock.withLock {
+        Thread.sleep(10) // Simula procesamiento
+        second.lock.withLock {
+            if (from.balance >= amount) {
+                from.balance -= amount
+                to.balance += amount
+                println("[${Thread.currentThread().name}] Transferencia: " +
+                        "$amount de cuenta ${from.id} a ${to.id}")
+            }
+        }
+    }
+}
+
+fun main() {
+    val account1 = Account(1, 1000.0)
+    val account2 = Account(2, 1000.0)
+    
+    val t1 = Thread {
+        repeat(5) {
+            transfer(account1, account2, 100.0)
+            Thread.sleep(50)
+        }
+    }
+    
+    val t2 = Thread {
+        repeat(5) {
+            transfer(account2, account1, 50.0)
+            Thread.sleep(50)
+        }
+    }
+    
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    
+    println("\n=== Saldos finales ===")
+    println("Cuenta 1: ${account1.balance}")
+    println("Cuenta 2: ${account2.balance}")
+    println("Total: ${account1.balance + account2.balance}")
+}
+```
+</details>
+
+---
+
+### Ejercicio 6: Corrutinas básicas con async y await
+**Enunciado:** Implementa un programa que descargue datos de 3 URLs simuladas en paralelo usando corrutinas. Muestra el tiempo que tarda la descarga secuencial vs paralela.
+**Requisitos:**
+- Usar async y await.
+- Simular descarga con delay.
+- Comparar tiempos de ejecución.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ParallelDownload.kt"
+import kotlinx.coroutines.*
+
+suspend fun downloadData(url: String): String {
+    println("Descargando de $url...")
+    delay((1000..3000).random().toLong()) // Simula descarga
+    return "Datos de $url"
+}
+
+fun main() = runBlocking {
+    val urls = listOf(
+        "http://api.example.com/users",
+        "http://api.example.com/posts",
+        "http://api.example.com/comments"
+    )
+    
+    // Descarga secuencial
+    val seqStart = System.currentTimeMillis()
+    val seqResults = urls.map { downloadData(it) }
+    val seqTime = System.currentTimeMillis() - seqStart
+    println("Secuencial: ${seqTime}ms\n")
+    
+    // Descarga paralela
+    val parStart = System.currentTimeMillis()
+    val deferreds = urls.map { url ->
+        async { downloadData(url) }
+    }
+    val parResults = deferreds.awaitAll()
+    val parTime = System.currentTimeMillis() - parStart
+    println("Paralelo: ${parTime}ms")
+    
+    println("\nMejora: ${((seqTime - parTime) * 100 / seqTime)}%")
+}
+```
+</details>
+
+### Ejercicio 7: Flow para procesamiento de stream
+**Enunciado:** Crea un Flow que genere números del 1 al 100, filtre los pares, los eleve al cuadrado, tome solo los 10 primeros y los colecte mostrándolos por pantalla.
+**Requisitos:**
+- Usar Flow con operadores (filter, map, take).
+- Añadir delays para simular procesamiento.
+- Mostrar el progreso.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="FlowProcessing.kt"
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+
+fun main() = runBlocking {
+    println("Procesando números...")
+    
+    (1..100).asFlow()
+        .onEach { delay(50) } // Simula generación lenta
+        .filter { 
+            println("Filtrando: $it")
+            it % 2 == 0 
+        }
+        .map { 
+            println("Transformando: $it")
+            it * it 
+        }
+        .take(10)
+        .collect { value ->
+            println("✓ Resultado: $value")
+        }
+    
+    println("\nProcesamiento completado")
+}
+```
+</details>
+
+### Ejercicio 8: Sistema de logging thread-safe con corrutinas
+**Enunciado:** Implementa un sistema de logging que registre eventos desde múltiples corrutinas de forma thread-safe usando Channel.
+**Requisitos:**
+- Usar Channel para enviar eventos de log.
+- Una corrutina dedicada procesa y escribe los logs.
+- Simular 10 trabajadores que generan logs.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="LoggingSystem.kt"
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.*
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+
+data class LogEvent(
+    val level: String,
+    val message: String,
+    val coroutineName: String,
+    val timestamp: LocalDateTime = LocalDateTime.now()
+)
+
+class Logger {
+    private val channel = Channel<LogEvent>(Channel.UNLIMITED)
+    private val formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+    
+    fun CoroutineScope.startProcessor() = launch {
+        for (event in channel) {
+            val time = event.timestamp.format(formatter)
+            println("[$time] [${event.level}] [${event.coroutineName}] ${event.message}")
+        }
+    }
+    
+    suspend fun log(level: String, message: String) {
+        val name = coroutineContext[CoroutineName]?.name ?: "unknown"
+        channel.send(LogEvent(level, message, name))
+    }
+    
+    fun close() {
+        channel.close()
+    }
+}
+
+fun main() = runBlocking {
+    val logger = Logger()
+    
+    // Iniciar procesador de logs
+    logger.startProcessor()
+    
+    // Lanzar trabajadores
+    val jobs = List(10) { id ->
+        launch(CoroutineName("Worker-$id")) {
+            logger.log("INFO", "Iniciado")
+            delay((100..500).random().toLong())
+            logger.log("DEBUG", "Procesando datos...")
+            delay((100..500).random().toLong())
+            logger.log("INFO", "Finalizado")
+        }
+    }
+    
+    // Esperar a todos
+    jobs.joinAll()
+    delay(100) // Dar tiempo a procesar logs restantes
+    logger.close()
+}
+```
+</details>
+
+### Ejercicio 9: StateFlow para contador reactivo
+**Enunciado:** Implementa un contador reactivo usando StateFlow que pueda ser observado por múltiples corrutinas. Las corrutinas deben reaccionar a los cambios del contador.
+**Requisitos:**
+- Usar MutableStateFlow.
+- Múltiples observadores.
+- Operaciones de incremento/decremento desde diferentes corrutinas.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ReactiveCounter.kt"
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+
+class ReactiveCounter {
+    private val _count = MutableStateFlow(0)
+    val count: StateFlow<Int> = _count.asStateFlow()
+    
+    fun increment() {
+        _count.value++
+    }
+    
+    fun decrement() {
+        _count.value--
+    }
+    
+    fun reset() {
+        _count.value = 0
+    }
+}
+
+fun main() = runBlocking {
+    val counter = ReactiveCounter()
+    
+    // Observador 1: Muestra todos los cambios
+    launch(CoroutineName("Observer-1")) {
+        counter.count.collect { value ->
+            println("[Observer-1] Contador: $value")
+        }
+    }
+    
+    // Observador 2: Reacciona a valores específicos
+    launch(CoroutineName("Observer-2")) {
+        counter.count
+            .filter { it % 5 == 0 }
+            .collect { value ->
+                println("[Observer-2] ¡Múltiplo de 5 alcanzado! $value")
+            }
+    }
+    
+    // Controlador: Modifica el contador
+    launch(CoroutineName("Controller")) {
+        delay(100)
+        repeat(15) {
+            counter.increment()
+            delay(200)
+        }
+        delay(500)
+        repeat(10) {
+            counter.decrement()
+            delay(200)
+        }
+    }
+    
+    delay(7000) // Esperar a que termine
+}
+```
+</details>
+
+### Ejercicio 10: Sistema completo de tareas con corrutinas y cancelación
+**Enunciado:** Implementa un gestor de tareas que permita agregar, ejecutar, cancelar y monitorizar tareas usando corrutinas. Incluye manejo de excepciones y limpieza de recursos.
+**Requisitos:**
+- Usar CoroutineScope personalizado.
+- SupervisorJob para que fallos no afecten otras tareas.
+- Cancelación cooperativa.
+- Estadísticas de ejecución.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="TaskManager.kt"
+import kotlinx.coroutines.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+
+data class Task(
+    val id: Int,
+    val name: String,
+    val duration: Long,
+    val shouldFail: Boolean = false
+)
+
+data class TaskResult(
+    val taskId: Int,
+    val success: Boolean,
+    val duration: Long,
+    val error: String? = null
+)
+
+class TaskManager {
+    private val scope = CoroutineScope(
+        Dispatchers.Default + 
+        SupervisorJob() + 
+        CoroutineName("TaskManager")
+    )
+    
+    private val runningTasks = ConcurrentHashMap<Int, Job>()
+    private val completedTasks = AtomicInteger(0)
+    private val failedTasks = AtomicInteger(0)
+    
+    fun submitTask(task: Task): Job {
+        val job = scope.launch {
+            try {
+                executeTask(task)
+            } catch (e: CancellationException) {
+                println("[Task ${task.id}] Cancelada")
+                throw e
+            } catch (e: Exception) {
+                println("[Task ${task.id}] Error: ${e.message}")
+                failedTasks.incrementAndGet()
+            }
+        }
+        
+        runningTasks[task.id] = job
+        
+        job.invokeOnCompletion {
+            runningTasks.remove(task.id)
+        }
+        
+        return job
+    }
+    
+    private suspend fun executeTask(task: Task) {
+        println("[Task ${task.id}] ${task.name} iniciada")
+        val startTime = System.currentTimeMillis()
+        
+        var elapsed = 0L
+        while (elapsed < task.duration) {
+            ensureActive() // Verifica cancelación
+            delay(100)
+            elapsed += 100
+            
+            if (elapsed % 1000 == 0L) {
+                println("[Task ${task.id}] Progreso: ${elapsed}ms/${task.duration}ms")
+            }
+        }
+        
+        if (task.shouldFail) {
+            throw RuntimeException("Tarea configurada para fallar")
+        }
+        
+        val duration = System.currentTimeMillis() - startTime
+        completedTasks.incrementAndGet()
+        println("[Task ${task.id}] ${task.name} completada en ${duration}ms")
+    }
+    
+    fun cancelTask(taskId: Int) {
+        runningTasks[taskId]?.cancel()
+    }
+    
+    fun cancelAll() {
+        runningTasks.values.forEach { it.cancel() }
+    }
+    
+    fun getStats() = """
+        === Estadísticas ===
+        Tareas en ejecución: ${runningTasks.size}
+        Tareas completadas: ${completedTasks.get()}
+        Tareas fallidas: ${failedTasks.get()}
+    """.trimIndent()
+    
+    fun shutdown() {
+        scope.cancel()
+    }
+}
+
+fun main() = runBlocking {
+    val manager = TaskManager()
+    
+    // Enviar tareas
+    val tasks = listOf(
+        Task(1, "Tarea rápida", 2000),
+        Task(2, "Tarea media", 3000),
+        Task(3, "Tarea larga", 5000),
+        Task(4, "Tarea que falla", 2000, shouldFail = true),
+        Task(5, "Tarea a cancelar", 10000)
+    )
+    
+    val jobs = tasks.map { manager.submitTask(it) }
+    
+    // Cancelar tarea 5 después de 2 segundos
+    delay(2000)
+    println("\n>>> Cancelando tarea 5...")
+    manager.cancelTask(5)
+    
+    // Esperar a que terminen las demás
+    jobs.forEach { 
+        try {
+            it.join()
+        } catch (e: CancellationException) {
+            // Ignorar
+        }
+    }
+    
+    delay(1000)
+    println("\n${manager.getStats()}")
+    
+    manager.shutdown()
+}
+```
+</details>
+
+```

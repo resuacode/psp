@@ -1,0 +1,453 @@
+---
+sidebar_position: 8
+title: Proyectos - Programación Multihilo
+draft: true
+---
+
+# Proyectos: Programación Multihilo en Kotlin [PENDIENTE DE REVISAR Y COMPLETAR]
+
+Cada uno de los siguientes proyectos está diseñado para reforzar y aplicar los conceptos aprendidos sobre programación multihilo, sincronización y corrutinas en Kotlin. Estos proyectos cubren desde aplicaciones básicas de gestión de hilos hasta aplicaciones Android completas con Jetpack Compose.
+
+## Proyecto 1: Monitor de rendimiento del sistema en tiempo real
+
+**Descripción:** Crea una aplicación de escritorio que monitorice en tiempo real el uso de CPU, memoria, disco y red del sistema, mostrando gráficos actualizados cada segundo.
+
+**Requisitos:**
+- La aplicación debe usar múltiples hilos para recopilar datos de diferentes recursos del sistema simultáneamente.
+- Debe mostrar gráficos en tiempo real (líneas o barras) del uso de CPU, memoria, disco y red.
+- Debe permitir configurar el intervalo de actualización (por ejemplo, cada 500ms, 1s, 2s).
+- Debe mostrar alertas cuando el uso de algún recurso supere un umbral configurable (por ejemplo, CPU > 80%).
+- Debe mantener un historial de los últimos N minutos de datos.
+- Debe tener una interfaz gráfica moderna usando JavaFX o Compose for Desktop.
+- Implementar sincronización adecuada para evitar condiciones de carrera al acceder a datos compartidos.
+- Usar `ExecutorService` o corrutinas para gestionar los hilos de monitorización.
+- Documentar el código y las decisiones de diseño sobre threading y sincronización.
+
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, hilos, sincronización, gráficos en tiempo real.
+
+**Extensión opcional:**
+- Permitir exportar los datos a CSV o JSON.
+- Añadir notificaciones del sistema cuando se superen umbrales.
+- Mostrar información detallada de procesos individuales.
+
+## Proyecto 2: Descargador de archivos paralelo
+
+**Descripción:** Desarrolla una aplicación que permita descargar múltiples archivos simultáneamente con gestión de hilos, control de velocidad, pausado/reanudación y barra de progreso para cada descarga.
+
+**Requisitos:**
+- La aplicación debe permitir añadir URLs de archivos a descargar.
+- Debe gestionar un pool de hilos configurable (por ejemplo, máximo 3 descargas simultáneas).
+- Cada descarga debe mostrar:
+  - Barra de progreso individual
+  - Velocidad de descarga actual
+  - Tamaño descargado / tamaño total
+  - Tiempo estimado restante
+- Debe permitir pausar, reanudar y cancelar descargas individuales.
+- Debe soportar reanudación de descargas interrumpidas (usando rangos HTTP).
+- Debe mostrar una cola de descargas pendientes.
+- Implementar gestión de errores (red no disponible, archivo no encontrado, etc.).
+- Usar sincronización apropiada para actualizar la UI desde hilos de descarga.
+- La interfaz debe permanecer receptiva durante las descargas.
+- Documentar la arquitectura de hilos y la estrategia de sincronización.
+
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `ExecutorService`, HTTP client, sincronización.
+
+**Extensión opcional:**
+- Segmentar descargas grandes en múltiples conexiones paralelas.
+- Verificar integridad con checksums (MD5, SHA-256).
+- Planificar descargas para ejecutarse a una hora específica.
+
+## Proyecto 3: Chat en tiempo real con servidor multihilo
+
+**Descripción:** Implementa un sistema de chat completo con servidor multihilo que soporte múltiples clientes conectados simultáneamente, salas de chat y mensajería privada.
+
+**Requisitos:**
+- **Servidor:**
+  - Debe aceptar múltiples conexiones de clientes usando sockets.
+  - Cada cliente debe manejarse en un hilo separado.
+  - Debe soportar salas de chat (los usuarios pueden crear y unirse a salas).
+  - Debe soportar mensajes privados entre usuarios.
+  - Debe mantener un registro de usuarios conectados.
+  - Debe difundir mensajes a todos los usuarios de una sala de forma thread-safe.
+  - Implementar comandos: /join [sala], /leave, /msg [usuario] [mensaje], /users, etc.
+  
+- **Cliente (Aplicación de escritorio):**
+  - Interfaz gráfica para conectarse al servidor.
+  - Mostrar lista de salas disponibles.
+  - Mostrar lista de usuarios conectados.
+  - Enviar y recibir mensajes en tiempo real.
+  - Soporte para emojis y formateo básico.
+  - Notificaciones de nuevos mensajes.
+
+- Implementar sincronización adecuada para evitar condiciones de carrera.
+- Manejar desconexiones inesperadas de clientes.
+- Usar colecciones thread-safe para gestionar listas de usuarios y mensajes.
+- Documentar el protocolo de comunicación y la arquitectura de hilos.
+
+**Tecnologías:** Kotlin, Sockets, hilos, sincronización, JavaFX o Compose for Desktop.
+
+**Extensión opcional:**
+- Cifrado de mensajes.
+- Persistencia de historial de chat.
+- Compartir archivos entre usuarios.
+
+## Proyecto 4: Procesador de imágenes por lotes con pipeline paralelo
+
+**Descripción:** Crea una aplicación que procese múltiples imágenes aplicando filtros y transformaciones usando un pipeline de procesamiento paralelo con diferentes etapas.
+
+**Requisitos:**
+- La aplicación debe permitir seleccionar múltiples imágenes para procesar.
+- Debe implementar un pipeline de procesamiento con al menos 3 etapas:
+  1. Carga de imagen
+  2. Aplicación de filtros/transformaciones
+  3. Guardado de imagen procesada
+- Cada etapa debe ejecutarse en hilos separados usando un patrón productor-consumidor.
+- Debe soportar varios filtros/transformaciones:
+  - Redimensionar (mantener proporción o no)
+  - Rotar (90°, 180°, 270°)
+  - Escala de grises
+  - Blur
+  - Ajustar brillo/contraste
+  - Recortar
+- El usuario debe poder seleccionar qué filtros aplicar y en qué orden.
+- Debe mostrar progreso general y por imagen.
+- Debe permitir configurar el número de hilos trabajadores por etapa.
+- Implementar uso de `BlockingQueue` para comunicación entre etapas.
+- La interfaz debe mostrar vista previa antes y después.
+- Documentar el diseño del pipeline y la sincronización entre etapas.
+
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `BlockingQueue`, hilos, procesamiento de imágenes.
+
+**Extensión opcional:**
+- Permitir guardar y cargar perfiles de procesamiento.
+- Añadir más filtros avanzados.
+- Procesamiento por lotes con diferentes configuraciones por carpeta.
+
+## Proyecto 5: Aplicación Android de noticias con corrutinas y Jetpack Compose
+
+**Descripción:** Desarrolla una aplicación Android que muestre noticias de una API pública, implementando gestión de estado con corrutinas, caché local con Room y una UI moderna con Jetpack Compose.
+
+**Requisitos:**
+- **Arquitectura:**
+  - Patrón MVVM (Model-View-ViewModel)
+  - Repository pattern para abstracción de datos
+  - Inyección de dependencias (Hilt o Koin)
+
+- **Funcionalidades:**
+  - Mostrar lista de noticias con imagen, título, descripción y fecha
+  - Detalle de noticia con contenido completo
+  - Categorías de noticias (tecnología, deportes, política, etc.)
+  - Búsqueda de noticias
+  - Favoritos guardados localmente
+  - Modo offline (mostrar noticias cacheadas)
+  - Pull-to-refresh
+  - Paginación infinita
+
+- **Corrutinas:**
+  - Usar `viewModelScope` para operaciones del ViewModel
+  - Usar `StateFlow` para estado de UI
+  - Usar `Flow` para streams de datos desde Repository
+  - Implementar manejo de errores con try-catch
+  - Usar dispatchers apropiados (Main, IO)
+
+- **Jetpack Compose:**
+  - UI completamente en Compose
+  - Material 3 Design
+  - LazyColumn con paginación
+  - Animaciones de transición
+  - Estados de carga, error y éxito
+
+- **Persistencia:**
+  - Room database para caché de noticias y favoritos
+  - SharedPreferences para configuración
+
+- **Red:**
+  - Retrofit para consumir API
+  - Manejo de estados de red (sin conexión, timeout, etc.)
+
+- Documentar la arquitectura, el flujo de datos y el uso de corrutinas.
+
+**APIs sugeridas:** NewsAPI, Guardian API, New York Times API.
+
+**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Room, Retrofit, ViewModel, StateFlow.
+
+**Extensión opcional:**
+- Compartir noticias en redes sociales.
+- Notificaciones push de noticias destacadas.
+- Modo oscuro.
+- Personalización de fuentes de noticias.
+
+## Proyecto 6: Simulador de productor-consumidor con visualización
+
+**Descripción:** Crea una aplicación de escritorio que simule y visualice el problema clásico del productor-consumidor con múltiples productores y consumidores, mostrando el estado del buffer y estadísticas en tiempo real.
+
+**Requisitos:**
+- La aplicación debe permitir configurar:
+  - Número de productores (1-10)
+  - Número de consumidores (1-10)
+  - Tamaño del buffer compartido (5-100)
+  - Velocidad de producción/consumo
+  
+- Debe visualizar:
+  - Estado actual del buffer (ocupación visual)
+  - Cada productor y consumidor como elementos animados
+  - Cola de elementos esperando ser consumidos
+  - Estadísticas en tiempo real:
+    - Items producidos/consumidos por segundo
+    - Tiempo promedio de espera
+    - Utilización del buffer
+    - Estado de cada hilo (trabajando, esperando, bloqueado)
+
+- Debe implementar tres variantes:
+  1. Usando `BlockingQueue`
+  2. Usando `synchronized` y `wait/notify`
+  3. Usando `Semaphore`
+
+- Debe permitir pausar/reanudar la simulación.
+- Debe permitir añadir/eliminar productores y consumidores en tiempo real.
+- Debe detectar y mostrar deadlocks si ocurren.
+- Documentar las diferencias entre las tres implementaciones.
+
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, sincronización, animaciones.
+
+**Extensión opcional:**
+- Modo de enseñanza con explicaciones paso a paso.
+- Grabación y reproducción de simulaciones.
+- Comparativa de rendimiento entre variantes.
+
+## Proyecto 7: Aplicación Android de tareas con sincronización en la nube
+
+**Descripción:** Desarrolla una aplicación Android de gestión de tareas que sincronice automáticamente con un backend (Firebase o API REST), usando corrutinas para operaciones asíncronas y WorkManager para sincronización en segundo plano.
+
+**Requisitos:**
+- **Funcionalidades de tareas:**
+  - Crear, editar, eliminar tareas
+  - Marcar como completadas
+  - Categorías/etiquetas
+  - Fechas de vencimiento
+  - Prioridades
+  - Notas y checklist dentro de tareas
+  - Búsqueda y filtrado
+
+- **Sincronización:**
+  - Sincronización automática cuando hay conexión
+  - Cola de cambios pendientes cuando está offline
+  - Resolución de conflictos (última modificación gana)
+  - Indicador visual de estado de sincronización
+  - WorkManager para sincronización periódica en segundo plano
+
+- **Corrutinas:**
+  - Todas las operaciones de BD y red deben usar corrutinas
+  - StateFlow para estado de UI
+  - Flow para observar cambios en BD local
+  - Manejo robusto de excepciones
+  - Cancelación apropiada de operaciones
+
+- **UI con Compose:**
+  - Material 3 Design
+  - Navegación entre pantallas
+  - Animaciones fluidas
+  - Swipe para completar/eliminar
+  - Drag and drop para reordenar
+
+- **Persistencia:**
+  - Room para base de datos local
+  - DataStore para preferencias
+
+- Notificaciones de recordatorio de tareas.
+- Widget para pantalla de inicio.
+- Documentar la estrategia de sincronización y el manejo de conflictos.
+
+**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Room, WorkManager, Firebase o Retrofit.
+
+**Extensión opcional:**
+- Compartir tareas con otros usuarios.
+- Adjuntar imágenes a tareas.
+- Estadísticas de productividad.
+- Modo Pomodoro integrado.
+
+## Proyecto 8: Analizador de logs multihilo en tiempo real
+
+**Descripción:** Implementa una aplicación que lea y analice archivos de log en tiempo real, procesando múltiples archivos simultáneamente y mostrando estadísticas y alertas.
+
+**Requisitos:**
+- La aplicación debe monitorizar múltiples archivos de log simultáneamente.
+- Debe detectar nuevas líneas añadidas a los archivos en tiempo real.
+- Debe procesar logs usando múltiples hilos:
+  - Hilo lector por cada archivo
+  - Pool de hilos para análisis/parsing
+  - Hilo para agregación de estadísticas
+  
+- Debe detectar y resaltar patrones:
+  - Errores (ERROR, FATAL, etc.)
+  - Warnings
+  - Patrones personalizables por regex
+  
+- Debe generar estadísticas:
+  - Número de entradas por nivel (INFO, WARN, ERROR)
+  - Frecuencia de errores por minuto
+  - Top errores más comunes
+  - Gráficos de tendencias
+
+- Debe implementar:
+  - Sistema de filtrado en tiempo real
+  - Búsqueda full-text
+  - Exportación de resultados
+  - Alertas configurables (email, sonido, notificación)
+
+- Usar `ConcurrentHashMap` y otras estructuras thread-safe.
+- Implementar patrón productor-consumidor para el pipeline de procesamiento.
+- Documentar la arquitectura de hilos y el flujo de datos.
+
+**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, hilos, sincronización, regex, gráficos.
+
+**Extensión opcional:**
+- Soportar formatos de log personalizables.
+- Análisis de logs remotos via SSH.
+- Machine learning para detectar anomalías.
+
+## Proyecto 9: Aplicación Android de clima con caché inteligente
+
+**Descripción:** Crea una aplicación Android que muestre información meteorológica usando corrutinas, con un sistema de caché inteligente que minimice las llamadas a la API y soporte modo offline.
+
+**Requisitos:**
+- **Funcionalidades:**
+  - Mostrar clima actual y pronóstico de 7 días
+  - Búsqueda de ciudades
+  - Lista de ciudades favoritas
+  - Detección de ubicación actual
+  - Gráficos de temperatura, precipitación, viento
+  - Alertas meteorológicas
+
+- **Caché inteligente:**
+  - Cachear datos por tiempo configurable (ej: 30 minutos)
+  - Actualizar automáticamente cuando expira
+  - Priorizar datos cacheados para respuesta rápida
+  - Sincronizar en background cuando hay conexión
+  - Estrategia de evicción LRU para ciudades
+
+- **Corrutinas:**
+  - Flow para emisión de datos (caché + red)
+  - Combinación de múltiples fuentes de datos
+  - Retry automático con backoff exponencial
+  - Timeout en peticiones de red
+  - Manejo elegante de errores
+
+- **UI Compose:**
+  - Material 3 con tematización
+  - Animaciones de cambio de datos
+  - Pull-to-refresh manual
+  - Indicadores de frescura de datos
+  - Transiciones suaves entre pantallas
+
+- **Arquitectura:**
+  - Clean Architecture con capas bien definidas
+  - Repository pattern con múltiples fuentes
+  - Use cases para lógica de negocio
+  - Inyección de dependencias
+
+- Documentar la estrategia de caché y el flujo de datos.
+
+**APIs sugeridas:** OpenWeatherMap, WeatherAPI, Visual Crossing.
+
+**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Flow, Room, Retrofit.
+
+**Extensión opcional:**
+- Widget con actualización automática.
+- Notificaciones de cambios significativos.
+- Radar de precipitación.
+- Integración con wearables.
+
+## Proyecto 10: Servidor de juegos multijugador con sincronización de estado
+
+**Descripción:** Implementa un servidor de juegos multijugador simple (ej: tres en raya, batalla naval) que gestione múltiples partidas simultáneas usando hilos y sincronización, junto con clientes de escritorio o Android.
+
+**Requisitos:**
+- **Servidor:**
+  - Soportar múltiples partidas simultáneas
+  - Hilo dedicado por partida
+  - Pool de hilos para gestionar conexiones
+  - Sistema de matchmaking (emparejar jugadores)
+  - Chat en partida
+  - Sistema de rankings/puntuaciones
+  - Persistencia de usuarios y estadísticas
+  - Heartbeat para detectar desconexiones
+  
+- **Cliente (Desktop o Android):**
+  - Login/registro de usuarios
+  - Lobby con lista de partidas disponibles
+  - Crear partida nueva
+  - Unirse a partida existente
+  - Interfaz del juego en tiempo real
+  - Chat integrado
+  - Ver rankings
+  - Historial de partidas
+
+- **Sincronización:**
+  - Estado del juego sincronizado entre clientes
+  - Manejo de concurrencia en movimientos simultáneos
+  - Validación server-side de movimientos
+  - Sistema de turnos thread-safe
+  - Detección de trampas
+
+- **Corrutinas (si es Android):**
+  - Comunicación con servidor asíncrona
+  - StateFlow para estado del juego
+  - WebSocket o Socket para tiempo real
+
+- Protocolo de comunicación bien definido (JSON o binario).
+- Manejo robusto de errores y reconexiones.
+- Documentar arquitectura de red y sincronización.
+
+**Tecnologías:** Kotlin, Sockets/WebSockets, hilos, sincronización, JavaFX/Compose for Desktop o Android.
+
+**Extensión opcional:**
+- Modo espectador.
+- Replay de partidas.
+- Múltiples variantes de juego.
+- Sistema de torneos.
+
+---
+
+## Criterios de evaluación generales
+
+Para todos los proyectos se evaluarán:
+
+1. **Corrección funcional** (30%):
+   - Cumplimiento de todos los requisitos
+   - Ausencia de bugs críticos
+   - Manejo apropiado de casos edge
+
+2. **Uso de concurrencia** (25%):
+   - Uso apropiado de hilos/corrutinas
+   - Sincronización correcta
+   - Ausencia de deadlocks y race conditions
+   - Eficiencia en el uso de recursos
+
+3. **Calidad del código** (20%):
+   - Código limpio y legible
+   - Buena organización y arquitectura
+   - Principios SOLID
+   - Manejo de errores
+
+4. **Interfaz de usuario** (15%):
+   - Diseño atractivo y usable
+   - Responsividad (no se congela)
+   - Feedback apropiado al usuario
+   - Accesibilidad
+
+5. **Documentación** (10%):
+   - Documentación del código
+   - README con instrucciones
+   - Diagramas de arquitectura
+   - Explicación de decisiones de diseño
+
+## Entrega
+
+Cada proyecto debe incluir:
+- Código fuente completo
+- README con instrucciones de ejecución
+- Documentación técnica (arquitectura, decisiones de diseño)
+- Diagramas relevantes (clases, secuencia, threading)
+- Tests unitarios básicos
+- Video demo de 3-5 minutos (opcional pero recomendado)

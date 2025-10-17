@@ -1,0 +1,722 @@
+---
+sidebar_position: 5
+title: Depuración y Documentación de Aplicaciones Multihilo
+---
+
+# Depuración y Documentación de Aplicaciones Multihilo
+
+La depuración de aplicaciones multihilo presenta desafíos únicos debido a la naturaleza no determinista de la ejecución concurrente. En esta sección exploraremos técnicas, herramientas y mejores prácticas para depurar y documentar código multihilo efectivamente.
+
+## Desafíos de la depuración multihilo
+
+### 1. No determinismo
+
+El orden de ejecución de los hilos puede variar en cada ejecución, haciendo que los errores sean difíciles de reproducir:
+
+```kotlin
+var sharedValue = 0
+
+fun problematicCode() {
+    repeat(2) {
+        Thread {
+            val temp = sharedValue
+            Thread.sleep(1) // Simula procesamiento
+            sharedValue = temp + 1
+        }.start()
+    }
+}
+
+// El resultado puede ser 1 o 2, dependiendo del orden de ejecución
+```
+
+### 2. Heisenbugs
+
+Errores que desaparecen o cambian cuando intentamos observarlos (añadiendo logs, breakpoints, etc.):
+
+```kotlin
+// El bug puede desaparecer al añadir println()
+// porque println está sincronizado internamente
+fun heisenBug() {
+    Thread {
+        // Sin println: puede fallar
+        counter++
+        
+        // Con println: el bug "desaparece"
+        // println("Counter: $counter")
+    }.start()
+}
+```
+
+### 3. Problemas de timing
+
+Errores que solo aparecen bajo condiciones específicas de carga o temporización.
+
+## Técnicas de depuración
+
+### 1. Logging estructurado
+
+Implementar un sistema de logging robusto es fundamental:
+
+```kotlin
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.FileHandler
+import java.util.logging.Logger
+import java.util.logging.SimpleFormatter
+
+class ThreadAwareLogger(name: String) {
+    private val logger = Logger.getLogger(name)
+    private val threadStats = ConcurrentHashMap<Long, Int>()
+    
+    init {
+        val fileHandler = FileHandler("app-${System.currentTimeMillis()}.log", true)
+        fileHandler.formatter = SimpleFormatter()
+        logger.addHandler(fileHandler)
+    }
+    
+    fun log(message: String, level: String = "INFO") {
+        val threadId = Thread.currentThread().id
+        val threadName = Thread.currentThread().name
+        val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_TIME)
+        
+        threadStats.compute(threadId) { _, count -> (count ?: 0) + 1 }
+        
+        val logMessage = "[$timestamp] [$level] [Thread-$threadId:$threadName] $message"
+        
+        when (level) {
+            "ERROR" -> logger.severe(logMessage)
+            "WARN" -> logger.warning(logMessage)
+            else -> logger.info(logMessage)
+        }
+    }
+    
+    fun getStats() = threadStats.toMap()
+}
+
+// Uso
+fun main() {
+    val logger = ThreadAwareLogger("MyApp")
+    
+    repeat(3) { id ->
+        Thread {
+            logger.log("Hilo iniciado")
+            Thread.sleep(100)
+            logger.log("Procesando datos...")
+            Thread.sleep(100)
+            logger.log("Hilo finalizado")
+        }.start()
+    }
+    
+    Thread.sleep(500)
+    println("Estadísticas: ${logger.getStats()}")
+}
+```
+
+### 2. Thread dumps y análisis de estado
+
+Capturar el estado de todos los hilos en un momento dado:
+
+```kotlin
+fun printThreadDump() {
+    println("=== THREAD DUMP ===")
+    Thread.getAllStackTraces().forEach { (thread, stackTrace) ->
+        println("\nThread: ${thread.name} (${thread.state})")
+        println("  Priority: ${thread.priority}, Daemon: ${thread.isDaemon}")
+        stackTrace.take(5).forEach { element ->
+            println("    at $element")
+        }
+    }
+}
+
+// Uso en depuración
+fun debuggableCode() {
+    val threads = List(5) { id ->
+        Thread {
+            Thread.sleep((1000..5000).random().toLong())
+        }.apply { start() }
+    }
+    
+    Thread.sleep(2000)
+    printThreadDump() // Ver el estado de todos los hilos
+    
+    threads.forEach { it.join() }
+}
+```
+
+### 3. Puntos de interrupción condicionales
+
+Los IDEs modernos permiten breakpoints condicionales específicos para hilos:
+
+```kotlin
+fun conditionalBreakpoint() {
+    var counter = 0
+    
+    repeat(10) { id ->
+        Thread {
+            counter++
+            // Breakpoint condicional: Thread.currentThread().name == "Thread-5"
+            println("Thread $id: counter = $counter")
+        }.start()
+    }
+}
+```
+
+:::tip Configurar breakpoints en IntelliJ IDEA
+1. Click derecho en el breakpoint
+2. Seleccionar "More" o "Condition"
+3. Añadir condición: `Thread.currentThread().getName().equals("Thread-5")`
+4. Opcionalmente, suspender solo ese hilo en lugar de todos
+:::
+
+### 4. Instrumentación de código
+
+Añadir código específico para depuración que puede activarse/desactivarse:
+
+```kotlin
+object DebugConfig {
+    var enabled = System.getProperty("debug.enabled", "false").toBoolean()
+    var verbose = System.getProperty("debug.verbose", "false").toBoolean()
+}
+
+inline fun debugLog(message: () -> String) {
+    if (DebugConfig.enabled) {
+        val thread = Thread.currentThread()
+        println("[DEBUG] [${thread.name}] ${message()}")
+    }
+}
+
+inline fun verboseLog(message: () -> String) {
+    if (DebugConfig.verbose) {
+        val thread = Thread.currentThread()
+        val stackTrace = Thread.currentThread().stackTrace[2]
+        println("[VERBOSE] [${thread.name}] ${stackTrace.className}.${stackTrace.methodName}:${stackTrace.lineNumber} - ${message()}")
+    }
+}
+
+// Uso
+fun example() {
+    debugLog { "Iniciando procesamiento" }
+    verboseLog { "Estado interno: counter=$counter" }
+}
+```
+
+### 5. Detección de condiciones de carrera
+
+Herramientas como ThreadSanitizer o técnicas manuales:
+
+```kotlin
+import java.util.concurrent.ConcurrentHashMap
+
+class AccessTracker {
+    private val accesses = ConcurrentHashMap<String, MutableList<AccessInfo>>()
+    
+    data class AccessInfo(
+        val threadId: Long,
+        val threadName: String,
+        val timestamp: Long,
+        val type: AccessType,
+        val stackTrace: String
+    )
+    
+    enum class AccessType { READ, WRITE }
+    
+    fun recordAccess(resource: String, type: AccessType) {
+        val thread = Thread.currentThread()
+        val stack = thread.stackTrace.take(5).joinToString("\n  ")
+        
+        val info = AccessInfo(
+            threadId = thread.id,
+            threadName = thread.name,
+            timestamp = System.nanoTime(),
+            type = type,
+            stackTrace = stack
+        )
+        
+        accesses.computeIfAbsent(resource) { mutableListOf() }.add(info)
+    }
+    
+    fun detectRaceConditions(resource: String): List<String> {
+        val accessList = accesses[resource] ?: return emptyList()
+        val issues = mutableListOf<String>()
+        
+        for (i in 0 until accessList.size - 1) {
+            val current = accessList[i]
+            val next = accessList[i + 1]
+            
+            // Detectar escrituras concurrentes
+            if (current.type == AccessType.WRITE && 
+                next.type == AccessType.WRITE &&
+                current.threadId != next.threadId &&
+                (next.timestamp - current.timestamp) < 1_000_000) { // < 1ms
+                
+                issues.add("Posible race condition: " +
+                    "escrituras de threads ${current.threadId} y ${next.threadId}")
+            }
+        }
+        
+        return issues
+    }
+}
+
+// Uso
+val tracker = AccessTracker()
+
+fun monitoredUpdate() {
+    tracker.recordAccess("sharedData", AccessTracker.AccessType.WRITE)
+    // ... realizar modificación ...
+}
+```
+
+## Herramientas de depuración
+
+### 1. VisualVM
+
+Herramienta para monitorizar aplicaciones Java/Kotlin:
+
+- Monitoreo de CPU y memoria en tiempo real
+- Análisis de thread dumps
+- Detección de deadlocks
+- Profiling de métodos
+
+```kotlin
+// Para usar VisualVM:
+// 1. Ejecutar la aplicación
+// 2. Abrir VisualVM y conectar al proceso
+// 3. Analizar threads, memoria, CPU
+
+fun monitorableApp() {
+    repeat(10) {
+        Thread {
+            while (true) {
+                // Trabajo que puede monitorizarse
+                Thread.sleep(100)
+            }
+        }.start()
+    }
+    
+    Thread.sleep(Long.MAX_VALUE)
+}
+```
+
+### 2. JConsole
+
+Herramienta JMX para monitorizar aplicaciones:
+
+```kotlin
+import java.lang.management.ManagementFactory
+import java.lang.management.ThreadMXBean
+
+fun printThreadInfo() {
+    val threadMXBean: ThreadMXBean = ManagementFactory.getThreadMXBean()
+    
+    println("Thread count: ${threadMXBean.threadCount}")
+    println("Peak thread count: ${threadMXBean.peakThreadCount}")
+    println("Daemon thread count: ${threadMXBean.daemonThreadCount}")
+    
+    // Detectar deadlocks
+    val deadlockedThreads = threadMXBean.findDeadlockedThreads()
+    if (deadlockedThreads != null) {
+        println("¡DEADLOCK DETECTADO!")
+        deadlockedThreads.forEach { threadId ->
+            val threadInfo = threadMXBean.getThreadInfo(threadId)
+            println("Thread en deadlock: ${threadInfo.threadName}")
+        }
+    }
+}
+```
+
+### 3. Assertions y validaciones
+
+```kotlin
+class ThreadSafeContainer<T> {
+    private val items = mutableListOf<T>()
+    private val lock = Any()
+    
+    fun add(item: T) {
+        synchronized(lock) {
+            items.add(item)
+            assert(Thread.holdsLock(lock)) { "Debe tener el lock" }
+        }
+    }
+    
+    fun get(index: Int): T {
+        synchronized(lock) {
+            require(index in items.indices) { "Índice fuera de rango: $index" }
+            return items[index]
+        }
+    }
+    
+    fun size(): Int {
+        synchronized(lock) {
+            return items.size
+        }
+    }
+}
+```
+
+## Estrategias de testing para código multihilo
+
+### 1. Tests de estrés
+
+```kotlin
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicInteger
+
+class ThreadSafeCounterTest {
+    
+    @Test
+    fun `test counter under concurrent access`() {
+        val counter = AtomicInteger(0)
+        val numThreads = 100
+        val incrementsPerThread = 1000
+        val latch = CountDownLatch(numThreads)
+        
+        val threads = List(numThreads) {
+            Thread {
+                repeat(incrementsPerThread) {
+                    counter.incrementAndGet()
+                }
+                latch.countDown()
+            }
+        }
+        
+        threads.forEach { it.start() }
+        latch.await()
+        
+        assertEquals(numThreads * incrementsPerThread, counter.get())
+    }
+}
+```
+
+### 2. Tests con timeouts
+
+```kotlin
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertTimeout
+import java.time.Duration
+
+class DeadlockTest {
+    
+    @Test
+    fun `should not deadlock`() {
+        assertTimeout(Duration.ofSeconds(5)) {
+            val lock1 = Any()
+            val lock2 = Any()
+            
+            val t1 = Thread {
+                synchronized(lock1) {
+                    Thread.sleep(10)
+                    synchronized(lock2) {
+                        // Trabajo
+                    }
+                }
+            }
+            
+            val t2 = Thread {
+                synchronized(lock1) { // Mismo orden que t1
+                    Thread.sleep(10)
+                    synchronized(lock2) {
+                        // Trabajo
+                    }
+                }
+            }
+            
+            t1.start()
+            t2.start()
+            t1.join()
+            t2.join()
+        }
+    }
+}
+```
+
+### 3. Property-based testing
+
+```kotlin
+import org.junit.jupiter.api.RepeatedTest
+
+class ConcurrentPropertyTest {
+    
+    @RepeatedTest(100) // Ejecutar 100 veces
+    fun `concurrent operations maintain invariants`() {
+        val list = java.util.concurrent.CopyOnWriteArrayList<Int>()
+        
+        val threads = List(10) { id ->
+            Thread {
+                repeat(10) {
+                    list.add(id)
+                }
+            }
+        }
+        
+        threads.forEach { it.start() }
+        threads.forEach { it.join() }
+        
+        // Invariante: debe haber exactamente 100 elementos
+        assertEquals(100, list.size)
+        
+        // Invariante: cada ID debe aparecer 10 veces
+        (0..9).forEach { id ->
+            assertEquals(10, list.count { it == id })
+        }
+    }
+}
+```
+
+## Documentación de código multihilo
+
+### 1. Documentar políticas de threading
+
+```kotlin
+/**
+ * Servicio de procesamiento de pedidos con soporte multihilo.
+ * 
+ * **Threading:**
+ * - Este servicio es thread-safe y puede ser llamado desde múltiples hilos.
+ * - Las operaciones de lectura no requieren sincronización externa.
+ * - Las operaciones de escritura están protegidas internamente.
+ * 
+ * **Sincronización:**
+ * - Usa ReentrantLock para proteger el estado interno.
+ * - Los métodos públicos adquieren el lock automáticamente.
+ * 
+ * **Deadlock:**
+ * - Los locks siempre se adquieren en el orden: orderLock -> inventoryLock.
+ * 
+ * @property maxConcurrentOrders Número máximo de pedidos procesándose simultáneamente
+ */
+class OrderService(private val maxConcurrentOrders: Int = 10) {
+    private val lock = java.util.concurrent.locks.ReentrantLock()
+    
+    /**
+     * Procesa un pedido de forma thread-safe.
+     * 
+     * @param order El pedido a procesar
+     * @return true si el pedido fue procesado exitosamente
+     * @throws IllegalStateException si el servicio está sobrecargado
+     * 
+     * **Threading:** Este método puede ser llamado de forma concurrente.
+     * **Bloqueo:** Puede bloquearse si hay [maxConcurrentOrders] pedidos procesándose.
+     */
+    fun processOrder(order: Order): Boolean {
+        lock.lock()
+        try {
+            // Implementación
+            return true
+        } finally {
+            lock.unlock()
+        }
+    }
+}
+```
+
+### 2. Documentar invariantes y precondiciones
+
+```kotlin
+/**
+ * Buffer circular thread-safe con capacidad fija.
+ * 
+ * **Invariantes:**
+ * - size siempre está entre 0 y capacity
+ * - readIndex y writeIndex están siempre entre 0 y capacity-1
+ * - size == (writeIndex - readIndex + capacity) % capacity
+ * 
+ * **Condiciones de bloqueo:**
+ * - put() se bloquea cuando el buffer está lleno
+ * - take() se bloquea cuando el buffer está vacío
+ */
+class CircularBuffer<T>(private val capacity: Int) {
+    private val buffer = arrayOfNulls<Any?>(capacity)
+    private var readIndex = 0
+    private var writeIndex = 0
+    private var size = 0
+    private val lock = Any()
+    
+    /**
+     * Añade un elemento al buffer.
+     * 
+     * @param item El elemento a añadir (no puede ser null)
+     * @throws InterruptedException si el hilo es interrumpido mientras espera
+     * 
+     * **Precondición:** item != null
+     * **Postcondición:** size aumenta en 1
+     * **Bloqueo:** Se bloquea si size == capacity
+     */
+    fun put(item: T) {
+        require(item != null) { "Item cannot be null" }
+        synchronized(lock) {
+            while (size == capacity) {
+                (lock as Object).wait()
+            }
+            buffer[writeIndex] = item
+            writeIndex = (writeIndex + 1) % capacity
+            size++
+            (lock as Object).notifyAll()
+        }
+    }
+}
+```
+
+### 3. Diagramas de sincronización
+
+```kotlin
+/**
+ * Patrón productor-consumidor con queue compartida.
+ * 
+ * ```
+ * [Productor 1] ──┐
+ * [Productor 2] ──┼──> [Queue] ──┬──> [Consumidor 1]
+ * [Productor 3] ──┘               └──> [Consumidor 2]
+ * ```
+ * 
+ * **Sincronización:**
+ * 1. Queue está protegida por un lock interno
+ * 2. Productores esperan si la queue está llena
+ * 3. Consumidores esperan si la queue está vacía
+ * 
+ * **Estados:**
+ * ```mermaid
+ * stateDiagram-v2
+ *     [*] --> Esperando
+ *     Esperando --> Procesando : elemento disponible
+ *     Procesando --> Esperando : procesamiento completo
+ *     Esperando --> [*] : shutdown
+ * ```
+ */
+class ProducerConsumerQueue<T>(capacity: Int) {
+    // Implementación...
+}
+```
+
+### 4. Ejemplos de uso seguro
+
+```kotlin
+/**
+ * Cache thread-safe con expiración.
+ * 
+ * **Ejemplo de uso seguro:**
+ * ```kotlin
+ * val cache = ThreadSafeCache<String, User>(
+ *     expirationMs = 60_000,
+ *     maxSize = 1000
+ * )
+ * 
+ * // Desde múltiples hilos:
+ * val user = cache.get("user123") {
+ *     // Esta función solo se llama si no está en caché
+ *     database.findUser("user123")
+ * }
+ * ```
+ * 
+ * **Ejemplo de uso INCORRECTO:**
+ * ```kotlin
+ * // ❌ NO hacer esto:
+ * if (!cache.contains(key)) {
+ *     cache.put(key, value) // Race condition!
+ * }
+ * 
+ * // ✅ Hacer esto en su lugar:
+ * cache.putIfAbsent(key, value)
+ * ```
+ */
+class ThreadSafeCache<K, V>(
+    private val expirationMs: Long,
+    private val maxSize: Int
+) {
+    // Implementación...
+}
+```
+
+## Checklist de depuración multihilo
+
+Antes de desplegar código multihilo, verifica:
+
+- [ ] Todos los accesos a recursos compartidos están sincronizados
+- [ ] No hay posibilidad de deadlocks (orden consistente de locks)
+- [ ] Los hilos se cierran correctamente al finalizar
+- [ ] Las excepciones en hilos se manejan apropiadamente
+- [ ] El código ha sido probado bajo carga concurrente
+- [ ] Está documentada la política de threading
+- [ ] Se han añadido logs suficientes para depuración
+- [ ] Se usan colecciones concurrentes donde es apropiado
+- [ ] Los tests incluyen casos de concurrencia
+- [ ] El código ha sido revisado por pares
+
+## Mejores prácticas
+
+### 1. Minimizar la sección crítica
+
+```kotlin
+// ❌ Malo: lock innecesariamente largo
+fun badExample() {
+    synchronized(lock) {
+        val data = fetchData() // Operación lenta
+        processData(data)      // Operación lenta
+        updateResult(data)     // Solo esto necesita sincronización
+    }
+}
+
+// ✅ Bueno: lock mínimo
+fun goodExample() {
+    val data = fetchData()    // Sin lock
+    val result = processData(data) // Sin lock
+    synchronized(lock) {
+        updateResult(result)  // Solo esto necesita lock
+    }
+}
+```
+
+### 2. Usar abstracciones de alto nivel
+
+```kotlin
+// ❌ Complejidad innecesaria
+val threads = mutableListOf<Thread>()
+repeat(10) {
+    threads.add(Thread { task() }.apply { start() })
+}
+threads.forEach { it.join() }
+
+// ✅ Mejor: usar ExecutorService
+val executor = Executors.newFixedThreadPool(10)
+repeat(10) {
+    executor.submit { task() }
+}
+executor.shutdown()
+executor.awaitTermination(1, TimeUnit.MINUTES)
+```
+
+### 3. Documentar asunciones sobre threading
+
+```kotlin
+/**
+ * NOTA: Esta clase NO es thread-safe.
+ * Debe ser accedida desde un solo hilo o con sincronización externa.
+ */
+class NotThreadSafe {
+    // ...
+}
+
+/**
+ * Esta clase ES thread-safe.
+ * Puede ser accedida de forma concurrente sin sincronización externa.
+ */
+class ThreadSafe {
+    // ...
+}
+```
+
+## Conclusión
+
+La depuración y documentación efectivas son cruciales para el éxito de aplicaciones multihilo. Recuerda:
+
+1. Usar logging estructurado y herramientas de monitoreo
+2. Escribir tests específicos para concurrencia
+3. Documentar políticas de threading claramente
+4. Usar herramientas como VisualVM y JConsole
+5. Implementar código defensivo con validaciones
+6. Mantener un checklist de revisión para código multihilo
+
+Con estas técnicas y prácticas, podrás crear aplicaciones multihilo más robustas y mantenibles.
