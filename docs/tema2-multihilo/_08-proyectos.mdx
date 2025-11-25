@@ -1,453 +1,815 @@
 ---
 sidebar_position: 8
 title: Proyectos - Programación Multihilo
-draft: true
 ---
 
-# Proyectos: Programación Multihilo en Kotlin [PENDIENTE DE REVISAR Y COMPLETAR]
+# Proyectos: Programación Multihilo y Corrutinas en Kotlin
 
-Cada uno de los siguientes proyectos está diseñado para reforzar y aplicar los conceptos aprendidos sobre programación multihilo, sincronización y corrutinas en Kotlin. Estos proyectos cubren desde aplicaciones básicas de gestión de hilos hasta aplicaciones Android completas con Jetpack Compose.
+Cada uno de los siguientes proyectos está diseñado para aplicar los conceptos aprendidos sobre programación multihilo, sincronización y corrutinas en Kotlin. Estos proyectos combinarán conocimientos de gestión de hilos, corrutinas, interfaces gráficas y desarrollo multiplataforma.
 
-## Proyecto 1: Monitor de rendimiento del sistema en tiempo real
-
-**Descripción:** Crea una aplicación de escritorio que monitorice en tiempo real el uso de CPU, memoria, disco y red del sistema, mostrando gráficos actualizados cada segundo.
-
-**Requisitos:**
-- La aplicación debe usar múltiples hilos para recopilar datos de diferentes recursos del sistema simultáneamente.
-- Debe mostrar gráficos en tiempo real (líneas o barras) del uso de CPU, memoria, disco y red.
-- Debe permitir configurar el intervalo de actualización (por ejemplo, cada 500ms, 1s, 2s).
-- Debe mostrar alertas cuando el uso de algún recurso supere un umbral configurable (por ejemplo, CPU > 80%).
-- Debe mantener un historial de los últimos N minutos de datos.
-- Debe tener una interfaz gráfica moderna usando JavaFX o Compose for Desktop.
-- Implementar sincronización adecuada para evitar condiciones de carrera al acceder a datos compartidos.
-- Usar `ExecutorService` o corrutinas para gestionar los hilos de monitorización.
-- Documentar el código y las decisiones de diseño sobre threading y sincronización.
-
-**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, hilos, sincronización, gráficos en tiempo real.
-
-**Extensión opcional:**
-- Permitir exportar los datos a CSV o JSON.
-- Añadir notificaciones del sistema cuando se superen umbrales.
-- Mostrar información detallada de procesos individuales.
-
-## Proyecto 2: Descargador de archivos paralelo
-
-**Descripción:** Desarrolla una aplicación que permita descargar múltiples archivos simultáneamente con gestión de hilos, control de velocidad, pausado/reanudación y barra de progreso para cada descarga.
-
-**Requisitos:**
-- La aplicación debe permitir añadir URLs de archivos a descargar.
-- Debe gestionar un pool de hilos configurable (por ejemplo, máximo 3 descargas simultáneas).
-- Cada descarga debe mostrar:
-  - Barra de progreso individual
-  - Velocidad de descarga actual
-  - Tamaño descargado / tamaño total
-  - Tiempo estimado restante
-- Debe permitir pausar, reanudar y cancelar descargas individuales.
-- Debe soportar reanudación de descargas interrumpidas (usando rangos HTTP).
-- Debe mostrar una cola de descargas pendientes.
-- Implementar gestión de errores (red no disponible, archivo no encontrado, etc.).
-- Usar sincronización apropiada para actualizar la UI desde hilos de descarga.
-- La interfaz debe permanecer receptiva durante las descargas.
-- Documentar la arquitectura de hilos y la estrategia de sincronización.
-
-**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `ExecutorService`, HTTP client, sincronización.
-
-**Extensión opcional:**
-- Segmentar descargas grandes en múltiples conexiones paralelas.
-- Verificar integridad con checksums (MD5, SHA-256).
-- Planificar descargas para ejecutarse a una hora específica.
-
-## Proyecto 3: Chat en tiempo real con servidor multihilo
-
-**Descripción:** Implementa un sistema de chat completo con servidor multihilo que soporte múltiples clientes conectados simultáneamente, salas de chat y mensajería privada.
-
-**Requisitos:**
-- **Servidor:**
-  - Debe aceptar múltiples conexiones de clientes usando sockets.
-  - Cada cliente debe manejarse en un hilo separado.
-  - Debe soportar salas de chat (los usuarios pueden crear y unirse a salas).
-  - Debe soportar mensajes privados entre usuarios.
-  - Debe mantener un registro de usuarios conectados.
-  - Debe difundir mensajes a todos los usuarios de una sala de forma thread-safe.
-  - Implementar comandos: /join [sala], /leave, /msg [usuario] [mensaje], /users, etc.
-  
-- **Cliente (Aplicación de escritorio):**
-  - Interfaz gráfica para conectarse al servidor.
-  - Mostrar lista de salas disponibles.
-  - Mostrar lista de usuarios conectados.
-  - Enviar y recibir mensajes en tiempo real.
-  - Soporte para emojis y formateo básico.
-  - Notificaciones de nuevos mensajes.
-
-- Implementar sincronización adecuada para evitar condiciones de carrera.
-- Manejar desconexiones inesperadas de clientes.
-- Usar colecciones thread-safe para gestionar listas de usuarios y mensajes.
-- Documentar el protocolo de comunicación y la arquitectura de hilos.
-
-**Tecnologías:** Kotlin, Sockets, hilos, sincronización, JavaFX o Compose for Desktop.
-
-**Extensión opcional:**
-- Cifrado de mensajes.
-- Persistencia de historial de chat.
-- Compartir archivos entre usuarios.
-
-## Proyecto 4: Procesador de imágenes por lotes con pipeline paralelo
-
-**Descripción:** Crea una aplicación que procese múltiples imágenes aplicando filtros y transformaciones usando un pipeline de procesamiento paralelo con diferentes etapas.
-
-**Requisitos:**
-- La aplicación debe permitir seleccionar múltiples imágenes para procesar.
-- Debe implementar un pipeline de procesamiento con al menos 3 etapas:
-  1. Carga de imagen
-  2. Aplicación de filtros/transformaciones
-  3. Guardado de imagen procesada
-- Cada etapa debe ejecutarse en hilos separados usando un patrón productor-consumidor.
-- Debe soportar varios filtros/transformaciones:
-  - Redimensionar (mantener proporción o no)
-  - Rotar (90°, 180°, 270°)
-  - Escala de grises
-  - Blur
-  - Ajustar brillo/contraste
-  - Recortar
-- El usuario debe poder seleccionar qué filtros aplicar y en qué orden.
-- Debe mostrar progreso general y por imagen.
-- Debe permitir configurar el número de hilos trabajadores por etapa.
-- Implementar uso de `BlockingQueue` para comunicación entre etapas.
-- La interfaz debe mostrar vista previa antes y después.
-- Documentar el diseño del pipeline y la sincronización entre etapas.
-
-**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, `BlockingQueue`, hilos, procesamiento de imágenes.
-
-**Extensión opcional:**
-- Permitir guardar y cargar perfiles de procesamiento.
-- Añadir más filtros avanzados.
-- Procesamiento por lotes con diferentes configuraciones por carpeta.
-
-## Proyecto 5: Aplicación Android de noticias con corrutinas y Jetpack Compose
-
-**Descripción:** Desarrolla una aplicación Android que muestre noticias de una API pública, implementando gestión de estado con corrutinas, caché local con Room y una UI moderna con Jetpack Compose.
-
-**Requisitos:**
-- **Arquitectura:**
-  - Patrón MVVM (Model-View-ViewModel)
-  - Repository pattern para abstracción de datos
-  - Inyección de dependencias (Hilt o Koin)
-
-- **Funcionalidades:**
-  - Mostrar lista de noticias con imagen, título, descripción y fecha
-  - Detalle de noticia con contenido completo
-  - Categorías de noticias (tecnología, deportes, política, etc.)
-  - Búsqueda de noticias
-  - Favoritos guardados localmente
-  - Modo offline (mostrar noticias cacheadas)
-  - Pull-to-refresh
-  - Paginación infinita
-
-- **Corrutinas:**
-  - Usar `viewModelScope` para operaciones del ViewModel
-  - Usar `StateFlow` para estado de UI
-  - Usar `Flow` para streams de datos desde Repository
-  - Implementar manejo de errores con try-catch
-  - Usar dispatchers apropiados (Main, IO)
-
-- **Jetpack Compose:**
-  - UI completamente en Compose
-  - Material 3 Design
-  - LazyColumn con paginación
-  - Animaciones de transición
-  - Estados de carga, error y éxito
-
-- **Persistencia:**
-  - Room database para caché de noticias y favoritos
-  - SharedPreferences para configuración
-
-- **Red:**
-  - Retrofit para consumir API
-  - Manejo de estados de red (sin conexión, timeout, etc.)
-
-- Documentar la arquitectura, el flujo de datos y el uso de corrutinas.
-
-**APIs sugeridas:** NewsAPI, Guardian API, New York Times API.
-
-**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Room, Retrofit, ViewModel, StateFlow.
-
-**Extensión opcional:**
-- Compartir noticias en redes sociales.
-- Notificaciones push de noticias destacadas.
-- Modo oscuro.
-- Personalización de fuentes de noticias.
-
-## Proyecto 6: Simulador de productor-consumidor con visualización
-
-**Descripción:** Crea una aplicación de escritorio que simule y visualice el problema clásico del productor-consumidor con múltiples productores y consumidores, mostrando el estado del buffer y estadísticas en tiempo real.
-
-**Requisitos:**
-- La aplicación debe permitir configurar:
-  - Número de productores (1-10)
-  - Número de consumidores (1-10)
-  - Tamaño del buffer compartido (5-100)
-  - Velocidad de producción/consumo
-  
-- Debe visualizar:
-  - Estado actual del buffer (ocupación visual)
-  - Cada productor y consumidor como elementos animados
-  - Cola de elementos esperando ser consumidos
-  - Estadísticas en tiempo real:
-    - Items producidos/consumidos por segundo
-    - Tiempo promedio de espera
-    - Utilización del buffer
-    - Estado de cada hilo (trabajando, esperando, bloqueado)
-
-- Debe implementar tres variantes:
-  1. Usando `BlockingQueue`
-  2. Usando `synchronized` y `wait/notify`
-  3. Usando `Semaphore`
-
-- Debe permitir pausar/reanudar la simulación.
-- Debe permitir añadir/eliminar productores y consumidores en tiempo real.
-- Debe detectar y mostrar deadlocks si ocurren.
-- Documentar las diferencias entre las tres implementaciones.
-
-**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, sincronización, animaciones.
-
-**Extensión opcional:**
-- Modo de enseñanza con explicaciones paso a paso.
-- Grabación y reproducción de simulaciones.
-- Comparativa de rendimiento entre variantes.
-
-## Proyecto 7: Aplicación Android de tareas con sincronización en la nube
-
-**Descripción:** Desarrolla una aplicación Android de gestión de tareas que sincronice automáticamente con un backend (Firebase o API REST), usando corrutinas para operaciones asíncronas y WorkManager para sincronización en segundo plano.
-
-**Requisitos:**
-- **Funcionalidades de tareas:**
-  - Crear, editar, eliminar tareas
-  - Marcar como completadas
-  - Categorías/etiquetas
-  - Fechas de vencimiento
-  - Prioridades
-  - Notas y checklist dentro de tareas
-  - Búsqueda y filtrado
-
-- **Sincronización:**
-  - Sincronización automática cuando hay conexión
-  - Cola de cambios pendientes cuando está offline
-  - Resolución de conflictos (última modificación gana)
-  - Indicador visual de estado de sincronización
-  - WorkManager para sincronización periódica en segundo plano
-
-- **Corrutinas:**
-  - Todas las operaciones de BD y red deben usar corrutinas
-  - StateFlow para estado de UI
-  - Flow para observar cambios en BD local
-  - Manejo robusto de excepciones
-  - Cancelación apropiada de operaciones
-
-- **UI con Compose:**
-  - Material 3 Design
-  - Navegación entre pantallas
-  - Animaciones fluidas
-  - Swipe para completar/eliminar
-  - Drag and drop para reordenar
-
-- **Persistencia:**
-  - Room para base de datos local
-  - DataStore para preferencias
-
-- Notificaciones de recordatorio de tareas.
-- Widget para pantalla de inicio.
-- Documentar la estrategia de sincronización y el manejo de conflictos.
-
-**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Room, WorkManager, Firebase o Retrofit.
-
-**Extensión opcional:**
-- Compartir tareas con otros usuarios.
-- Adjuntar imágenes a tareas.
-- Estadísticas de productividad.
-- Modo Pomodoro integrado.
-
-## Proyecto 8: Analizador de logs multihilo en tiempo real
-
-**Descripción:** Implementa una aplicación que lea y analice archivos de log en tiempo real, procesando múltiples archivos simultáneamente y mostrando estadísticas y alertas.
-
-**Requisitos:**
-- La aplicación debe monitorizar múltiples archivos de log simultáneamente.
-- Debe detectar nuevas líneas añadidas a los archivos en tiempo real.
-- Debe procesar logs usando múltiples hilos:
-  - Hilo lector por cada archivo
-  - Pool de hilos para análisis/parsing
-  - Hilo para agregación de estadísticas
-  
-- Debe detectar y resaltar patrones:
-  - Errores (ERROR, FATAL, etc.)
-  - Warnings
-  - Patrones personalizables por regex
-  
-- Debe generar estadísticas:
-  - Número de entradas por nivel (INFO, WARN, ERROR)
-  - Frecuencia de errores por minuto
-  - Top errores más comunes
-  - Gráficos de tendencias
-
-- Debe implementar:
-  - Sistema de filtrado en tiempo real
-  - Búsqueda full-text
-  - Exportación de resultados
-  - Alertas configurables (email, sonido, notificación)
-
-- Usar `ConcurrentHashMap` y otras estructuras thread-safe.
-- Implementar patrón productor-consumidor para el pipeline de procesamiento.
-- Documentar la arquitectura de hilos y el flujo de datos.
-
-**Tecnologías:** Kotlin, JavaFX o Compose for Desktop, hilos, sincronización, regex, gráficos.
-
-**Extensión opcional:**
-- Soportar formatos de log personalizables.
-- Análisis de logs remotos via SSH.
-- Machine learning para detectar anomalías.
-
-## Proyecto 9: Aplicación Android de clima con caché inteligente
-
-**Descripción:** Crea una aplicación Android que muestre información meteorológica usando corrutinas, con un sistema de caché inteligente que minimice las llamadas a la API y soporte modo offline.
-
-**Requisitos:**
-- **Funcionalidades:**
-  - Mostrar clima actual y pronóstico de 7 días
-  - Búsqueda de ciudades
-  - Lista de ciudades favoritas
-  - Detección de ubicación actual
-  - Gráficos de temperatura, precipitación, viento
-  - Alertas meteorológicas
-
-- **Caché inteligente:**
-  - Cachear datos por tiempo configurable (ej: 30 minutos)
-  - Actualizar automáticamente cuando expira
-  - Priorizar datos cacheados para respuesta rápida
-  - Sincronizar en background cuando hay conexión
-  - Estrategia de evicción LRU para ciudades
-
-- **Corrutinas:**
-  - Flow para emisión de datos (caché + red)
-  - Combinación de múltiples fuentes de datos
-  - Retry automático con backoff exponencial
-  - Timeout en peticiones de red
-  - Manejo elegante de errores
-
-- **UI Compose:**
-  - Material 3 con tematización
-  - Animaciones de cambio de datos
-  - Pull-to-refresh manual
-  - Indicadores de frescura de datos
-  - Transiciones suaves entre pantallas
-
-- **Arquitectura:**
-  - Clean Architecture con capas bien definidas
-  - Repository pattern con múltiples fuentes
-  - Use cases para lógica de negocio
-  - Inyección de dependencias
-
-- Documentar la estrategia de caché y el flujo de datos.
-
-**APIs sugeridas:** OpenWeatherMap, WeatherAPI, Visual Crossing.
-
-**Tecnologías:** Kotlin, Android, Jetpack Compose, Corrutinas, Flow, Room, Retrofit.
-
-**Extensión opcional:**
-- Widget con actualización automática.
-- Notificaciones de cambios significativos.
-- Radar de precipitación.
-- Integración con wearables.
-
-## Proyecto 10: Servidor de juegos multijugador con sincronización de estado
-
-**Descripción:** Implementa un servidor de juegos multijugador simple (ej: tres en raya, batalla naval) que gestione múltiples partidas simultáneas usando hilos y sincronización, junto con clientes de escritorio o Android.
-
-**Requisitos:**
-- **Servidor:**
-  - Soportar múltiples partidas simultáneas
-  - Hilo dedicado por partida
-  - Pool de hilos para gestionar conexiones
-  - Sistema de matchmaking (emparejar jugadores)
-  - Chat en partida
-  - Sistema de rankings/puntuaciones
-  - Persistencia de usuarios y estadísticas
-  - Heartbeat para detectar desconexiones
-  
-- **Cliente (Desktop o Android):**
-  - Login/registro de usuarios
-  - Lobby con lista de partidas disponibles
-  - Crear partida nueva
-  - Unirse a partida existente
-  - Interfaz del juego en tiempo real
-  - Chat integrado
-  - Ver rankings
-  - Historial de partidas
-
-- **Sincronización:**
-  - Estado del juego sincronizado entre clientes
-  - Manejo de concurrencia en movimientos simultáneos
-  - Validación server-side de movimientos
-  - Sistema de turnos thread-safe
-  - Detección de trampas
-
-- **Corrutinas (si es Android):**
-  - Comunicación con servidor asíncrona
-  - StateFlow para estado del juego
-  - WebSocket o Socket para tiempo real
-
-- Protocolo de comunicación bien definido (JSON o binario).
-- Manejo robusto de errores y reconexiones.
-- Documentar arquitectura de red y sincronización.
-
-**Tecnologías:** Kotlin, Sockets/WebSockets, hilos, sincronización, JavaFX/Compose for Desktop o Android.
-
-**Extensión opcional:**
-- Modo espectador.
-- Replay de partidas.
-- Múltiples variantes de juego.
-- Sistema de torneos.
+:::info Nota importante
+Dos de los proyectos deben desarrollarse como **aplicaciones Kotlin Multiplatform** (KMP) con versiones para escritorio (Windows) y Android. Los otros dos proyectos serán exclusivamente para **Android**.
+:::
 
 ---
 
-## Criterios de evaluación generales
+## Proyecto 1: Monitor de Descargas Paralelas Multiplataforma 🌐
 
-Para todos los proyectos se evaluarán:
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows + Android)
 
-1. **Corrección funcional** (30%):
-   - Cumplimiento de todos los requisitos
-   - Ausencia de bugs críticos
-   - Manejo apropiado de casos edge
+### Descripción
 
-2. **Uso de concurrencia** (25%):
-   - Uso apropiado de hilos/corrutinas
-   - Sincronización correcta
-   - Ausencia de deadlocks y race conditions
-   - Eficiencia en el uso de recursos
+Desarrolla una aplicación multiplataforma que permita gestionar descargas de archivos desde Internet de forma paralela, con control avanzado de velocidad, pausado/reanudación, prioridades y estadísticas en tiempo real. La aplicación debe tener una interfaz gráfica atractiva y moderna tanto en escritorio como en Android.
 
-3. **Calidad del código** (20%):
-   - Código limpio y legible
-   - Buena organización y arquitectura
-   - Principios SOLID
-   - Manejo de errores
+### Funcionalidades obligatorias
 
-4. **Interfaz de usuario** (15%):
-   - Diseño atractivo y usable
-   - Responsividad (no se congela)
-   - Feedback apropiado al usuario
-   - Accesibilidad
+#### Gestión de descargas
 
-5. **Documentación** (10%):
-   - Documentación del código
+1. **Añadir descargas:**
+   - Introducir URL manualmente o pegar desde portapapeles
+   - Detectar automáticamente el nombre y tamaño del archivo
+   - Asignar categoría (Documentos, Multimedia, Software, Otros)
+   - Establecer prioridad (Alta, Media, Baja)
+
+2. **Control de descargas:**
+   - Iniciar/pausar/reanudar descargas individuales
+   - Cancelar descargas
+   - Eliminar descargas completadas o canceladas
+   - Pausar/reanudar TODAS las descargas simultáneamente
+   - Límite configurable de descargas simultáneas (1-10)
+
+3. **Visualización:**
+   - Lista de descargas activas con:
+     - Icono según la categoría
+     - Barra de progreso con porcentaje
+     - Velocidad de descarga actual (KB/s, MB/s)
+     - Tamaño descargado / Tamaño total
+     - Tiempo transcurrido
+     - Tiempo estimado restante
+     - Estado (Esperando, Descargando, Pausada, Completada, Error)
+   - Panel de estadísticas globales:
+     - Total de archivos descargados en la sesión
+     - Total de datos descargados (MB/GB)
+     - Velocidad media global
+     - Descargas activas / En cola / Completadas
+
+4. **Funcionalidades avanzadas:**
+   - Cola de descargas (las que esperan a ser iniciadas)
+   - Reordenar prioridades mediante drag & drop
+   - Límite de velocidad configurable por descarga y global
+   - Historial de descargas completadas
+   - Reanudación automática de descargas interrumpidas
+   - Verificación de integridad con MD5 o SHA-256 (opcional)
+
+#### Requisitos técnicos de concurrencia
+
+1. **Corrutinas:**
+   - Usar `async` para gestionar múltiples descargas en paralelo
+   - Implementar `Flow` para emitir progreso de cada descarga
+   - Usar `StateFlow` para el estado global de la aplicación
+   - `Dispatchers.IO` para operaciones de red y archivos
+   - `Dispatchers.Main` para actualizaciones de UI
+
+2. **Sincronización:**
+   - Gestionar acceso thread-safe a la cola de descargas
+   - Semáforo o mecanismo similar para limitar descargas simultáneas
+   - Evitar race conditions al actualizar estadísticas globales
+   - Manejo robusto de cancelaciones y excepciones
+
+3. **Gestión de recursos:**
+   - Liberación correcta de conexiones HTTP
+   - Cancelación cooperativa de corrutinas
+   - Manejo de memoria eficiente (evitar leaks)
+
+#### Interfaz gráfica
+
+**Versión Escritorio (Compose for Desktop):**
+- Ventana principal con lista de descargas
+- Panel lateral con estadísticas y configuración
+- Menú superior con opciones (Añadir, Pausar todas, Configuración)
+- Ventanas secundarias para:
+  - Añadir nueva descarga
+  - Configuración (límites, directorios, etc.)
+  - Historial de descargas
+- Tema claro/oscuro
+
+**Versión Android (Jetpack Compose):**
+- Pantalla principal con lista de descargas (LazyColumn)
+- FloatingActionButton para añadir descargas
+- Bottom sheet para detalles de descarga
+- Pestañas para: Activas / Completadas / En cola
+- Notificación persistente mostrando descargas activas
+
+### Entregables específicos
+
+1. **Versión Windows:**
+   - Archivo `.exe` ejecutable (usando jpackage o similar)
+   - O instalador `.msi` para instalación completa
+   - Debe ejecutarse sin requerir JVM instalado
+
+2. **Versión Android:**
+   - Archivo `.apk` para instalación
+   - Probado en dispositivos con API 26+ (Android 8.0+)
+
+3. **Vídeo demostrativo:**
+   - Duración: 5-8 minutos
+   - Mostrar funcionamiento en ambas plataformas
+   - Demostrar todas las funcionalidades principales
+   - Puede estar comentado o con subtítulos explicativos
+
+4. **Código fuente:**
+   - Proyecto Kotlin Multiplatform organizado
+   - Módulos: `shared`, `desktop`, `android`
+   - README con instrucciones de compilación
+
+---
+
+## Proyecto 2: Simulador de Mercado Bursátil en Tiempo Real 📈
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows + Android)
+
+### Descripción
+
+Desarrolla una aplicación multiplataforma que simule un mercado bursátil con múltiples acciones que cambian de precio en tiempo real, permitiendo a los usuarios comprar/vender acciones, gestionar un portfolio, ver gráficos de evolución y recibir alertas de precios. El simulador debe ejecutar operaciones de mercado en paralelo usando hilos y corrutinas.
+
+### Funcionalidades obligatorias
+
+#### Motor de simulación de mercado
+
+1. **Generación de precios en tiempo real:**
+   - 15-20 acciones de empresas ficticias con precios iniciales
+   - Cada acción tiene un hilo/corrutina que actualiza su precio cada 1-3 segundos
+   - Cambios de precio aleatorios pero realistas (-5% a +5%)
+   - Factores que influyen en el precio:
+     - Tendencia general del mercado (alcista/bajista)
+     - Noticias aleatorias que afectan a sectores
+     - Volatilidad por acción (algunas más estables, otras más volátiles)
+   - Horario de mercado: abre/cierra en horarios configurables
+
+2. **Información de acciones:**
+   - Nombre de la empresa
+   - Símbolo (ticker)
+   - Sector (Tecnología, Energía, Banca, Comercio, Salud)
+   - Precio actual
+   - Precio de apertura del día
+   - Precio máximo/mínimo del día
+   - Variación en € y en %
+   - Volumen de transacciones
+   - Historial de precios (últimos 100 valores)
+
+3. **Eventos de mercado:**
+   - Generación aleatoria de noticias que afectan al mercado:
+     - "Tecnología en auge: +3%"
+     - "Crisis energética: Energía -4%"
+     - "Subida de tipos de interés: Banca +2%"
+   - Los eventos afectan a todas las empresas de un sector simultáneamente
+   - Mostrar eventos en un panel de noticias en tiempo real
+
+#### Gestión de portfolio
+
+1. **Cuenta de usuario:**
+   - Dinero disponible inicial: 10.000€
+   - Saldo actual
+   - Valor total del portfolio (cash + acciones)
+   - Beneficio/pérdida total (€ y %)
+   - Historial de transacciones
+
+2. **Compra/venta de acciones:**
+   - Comprar acciones al precio de mercado actual
+   - Vender acciones que se poseen
+   - Validaciones:
+     - No comprar sin dinero suficiente
+     - No vender más acciones de las que se poseen
+     - Comisión por transacción (0.5%)
+   - Confirmación antes de ejecutar
+
+3. **Portfolio de acciones:**
+   - Lista de acciones que se poseen con:
+     - Cantidad de acciones
+     - Precio de compra medio
+     - Precio actual de mercado
+     - Valor total actual
+     - Beneficio/pérdida (€ y %)
+   - Actualización en tiempo real del valor del portfolio
+   - Ordenar por beneficio, pérdida, valor, etc.
+
+4. **Historial de transacciones:**
+   - Registro de todas las compras/ventas realizadas
+   - Fecha y hora
+   - Tipo (compra/venta)
+   - Acción
+   - Cantidad
+   - Precio por acción
+   - Total
+   - Comisión
+   - Exportar a CSV
+
+#### Análisis y visualización
+
+1. **Gráficos:**
+   - Gráfico de líneas con evolución de precio de cualquier acción
+   - Gráfico de tarta con distribución del portfolio por sector
+   - Gráfico de barras con beneficios/pérdidas por acción
+   - Gráfico de evolución del valor total del portfolio
+   - Actualizaciones en tiempo real
+
+2. **Tabla de cotizaciones:**
+   - Lista de todas las acciones disponibles
+   - Ordenar por: nombre, precio, variación %, sector
+   - Filtrar por sector
+   - Código de colores:
+     - Verde: precio subió
+     - Rojo: precio bajó
+     - Gris: sin cambios
+   - Animación al cambiar precio
+
+3. **Alertas de precios:**
+   - Configurar alertas para acciones específicas
+   - Tipos de alerta:
+     - Precio sube por encima de X€
+     - Precio baja por debajo de Y€
+     - Variación supera Z%
+   - Notificación visual y sonora cuando salte alerta
+   - Historial de alertas activadas
+
+#### Funcionalidades avanzadas
+
+1. **Estrategias automáticas (opcional):**
+   - Compra automática si precio baja X%
+   - Venta automática si beneficio supera Y%
+   - Stop-loss: venta automática si pérdida supera Z%
+
+2. **Estadísticas:**
+   - Mejor/peor transacción
+   - Acción más rentable
+   - Tasa de éxito (% transacciones con beneficio)
+   - Rentabilidad media
+
+3. **Persistencia:**
+   - Guardar estado del portfolio en archivos JSON
+   - Cargar portfolio al iniciar
+   - Guardar historial de precios
+   - Exportar/importar portfolio
+
+#### Requisitos técnicos de concurrencia
+
+1. **Hilos y corrutinas:**
+   - Cada acción tiene una corrutina que actualiza su precio periódicamente
+   - Thread pool para gestionar múltiples actualizaciones
+   - Corrutina para generar eventos de mercado aleatorios
+   - `Flow` para emitir cambios de precios
+   - `StateFlow` para estado global del mercado
+   - `Dispatchers.Default` para cálculos
+   - `Dispatchers.Main` para UI
+
+2. **Sincronización:**
+   - ConcurrentHashMap para precios actuales de las acciones
+   - Acceso thread-safe al portfolio del usuario
+   - Locks para operaciones de compra/venta (evitar race conditions)
+   - Evitar deadlocks al actualizar múltiples acciones
+   - AtomicInteger para IDs de transacciones
+
+3. **Manejo de estado:**
+   - Cancelación correcta de todas las corrutinas al cerrar
+   - Pausar/reanudar simulación
+   - Acelerar tiempo de simulación (modo rápido)
+
+#### Interfaz gráfica
+
+**Versión Escritorio (Compose for Desktop):**
+- Ventana principal dividida en secciones:
+  - Tabla de cotizaciones (izquierda)
+  - Gráfico de acción seleccionada (centro)
+  - Portfolio y noticias (derecha)
+- Barra superior con:
+  - Saldo actual
+  - Valor portfolio
+  - Beneficio/pérdida
+  - Estado del mercado (ABIERTO/CERRADO)
+- Ventanas secundarias para:
+  - Comprar/vender acciones
+  - Configurar alertas
+  - Ver historial de transacciones
+  - Estadísticas
+- Tema claro/oscuro
+
+**Versión Android (Jetpack Compose):**
+- Pestañas:
+  - Mercado (lista de acciones con precios)
+  - Portfolio (mis acciones)
+  - Gráficos
+  - Alertas
+- FloatingActionButton para comprar/vender
+- Notificaciones para alertas de precios
+- Swipe para ver detalles de acción
+
+### Entregables específicos
+
+1. **Versión Windows:**
+   - Archivo `.exe` ejecutable
+   - O instalador `.msi`
+
+2. **Versión Android:**
+   - Archivo `.apk`
+
+3. **Vídeo demostrativo:**
+   - 6-10 minutos
+   - Mostrar mercado en funcionamiento (precios cambiando)
+   - Realizar compras y ventas
+   - Configurar alertas y que salten
+   - Ver gráficos y estadísticas
+   - Demostrar en ambas plataformas
+
+4. **Código fuente:**
+   - Proyecto Kotlin Multiplatform organizado
+   - Módulos: `shared`, `desktop`, `android`
+
+---
+
+## Proyecto 3: Editor de Imágenes con Procesamiento Paralelo 🎨
+
+**Plataforma:** Solo Android
+
+### Descripción
+
+Desarrolla una aplicación Android de edición de imágenes que aplique filtros y transformaciones de forma paralela usando corrutinas, permitiendo previsualizar los resultados en tiempo real y procesar múltiples imágenes simultáneamente con progreso individual. La app debe tener una UI moderna con Jetpack Compose siguiendo Material Design 3.
+
+### Funcionalidades obligatorias
+
+#### Gestión de imágenes
+
+1. **Carga de imágenes:**
+   - Seleccionar imágenes de la galería del dispositivo
+   - Capturar foto con cámara
+   - Soportar formatos: JPG, PNG
+   - Vista previa de imagen original
+   - Historial de imágenes editadas (guardadas localmente)
+
+2. **Procesamiento por lotes:**
+   - Seleccionar múltiples imágenes (hasta 10)
+   - Aplicar los mismos filtros a todas
+   - Procesamiento paralelo con progreso individual por imagen
+   - Barra de progreso global e individual
+   - Posibilidad de cancelar procesamiento
+   - Estimación de tiempo restante
+
+#### Filtros y transformaciones
+
+1. **Filtros básicos:**
+   - Escala de grises
+   - Sepia
+   - Negativo
+   - Brillo (ajustable con slider -100 a +100)
+   - Contraste (ajustable con slider -100 a +100)
+   - Saturación (ajustable con slider -100 a +100)
+
+2. **Filtros avanzados:**
+   - Blur (desenfoque) con diferentes intensidades
+   - Sharpen (enfoque)
+   - Detección de bordes
+   - Posterización (reducir número de colores)
+   - Viñeta (oscurecer esquinas)
+
+3. **Transformaciones:**
+   - Rotar 90°, 180°, 270°
+   - Voltear horizontal/vertical
+   - Recortar (crop) con proporción libre o fija (1:1, 4:3, 16:9)
+   - Redimensionar por porcentaje (25%, 50%, 75%) o píxeles
+
+4. **Composición:**
+   - Aplicar múltiples filtros en secuencia
+   - Cada filtro se ejecuta en una corrutina independiente
+   - Pipeline de procesamiento (filtro1 → filtro2 → filtro3)
+   - Ver preview de cada paso
+
+#### Visualización en tiempo real
+
+1. **Preview interactivo:**
+   - Aplicar filtros y ver resultado inmediatamente
+   - Usar corrutinas para no bloquear UI
+   - Cancelar procesamiento anterior si se cambia de filtro
+   - Indicador de "procesando..." mientras se aplica filtro
+   - Comparación lado a lado: original vs. editada (slider)
+
+2. **Histograma:**
+   - Mostrar histograma de colores (RGB) de la imagen
+   - Actualizar en tiempo real al aplicar filtros
+   - Calcular en background con corrutinas
+
+3. **Información de la imagen:**
+   - Resolución (ancho x alto)
+   - Tamaño en disco (KB/MB)
+   - Formato
+   - Reducción de tamaño tras aplicar filtros
+
+#### Procesamiento paralelo avanzado
+
+1. **Estrategia de paralelización:**
+   - Dividir imagen en bloques (tiles) de NxN píxeles
+   - Procesar cada bloque en una corrutina independiente
+   - Pool de corrutinas limitado para no saturar CPU
+   - Usar `Dispatchers.Default` para procesamiento intensivo
+   - Recomponer imagen final cuando todos los bloques estén listos
+
+2. **Optimización:**
+   - Caché de imágenes ya procesadas (LRU Cache)
+   - Redimensionar imagen para preview (menor resolución)
+   - Procesamiento completo solo al guardar
+   - Liberar memoria cuando no se usan imágenes
+
+3. **Gestión de recursos:**
+   - Limitar número de imágenes en memoria (máx. 3-5)
+   - Comprimir imágenes no visibles
+   - Cancelar operaciones pendientes al salir
+
+#### Guardado y exportación
+
+1. **Guardar imagen editada:**
+   - Guardar en galería del dispositivo
+   - Elegir calidad de compresión (baja, media, alta)
+   - Guardar manteniendo metadatos EXIF (opcional)
+   - Nombre automático o personalizado
+
+2. **Compartir:**
+   - Compartir imagen editada con otras apps
+   - Compartir múltiples imágenes simultáneamente
+
+3. **Exportación por lotes:**
+   - Guardar todas las imágenes procesadas
+   - Crear ZIP con todas (opcional)
+   - Progreso de guardado
+
+4. **Persistencia local:**
+   - Guardar preferencias de usuario en archivos de preferencias
+   - Historial de proyectos de edición (archivos JSON)
+   - No usar BD, solo archivos JSON/XML simples
+
+#### Requisitos técnicos de concurrencia
+
+1. **Corrutinas:**
+   - `viewModelScope` para operaciones del ViewModel
+   - `async/await` para procesamiento paralelo de bloques de imagen
+   - `Flow` para emitir progreso de procesamiento
+   - `StateFlow` para estado de la UI (imagen actual, filtros aplicados)
+   - `Dispatchers.Default` para procesamiento de imágenes
+   - `Dispatchers.IO` para operaciones de archivos
+   - `Dispatchers.Main` para actualizaciones de UI
+
+2. **Sincronización:**
+   - Mutex para acceso a imágenes compartidas
+   - Channel para comunicación entre corrutinas de procesamiento
+   - Evitar race conditions al recomponer bloques de imagen
+   - Cancelación cooperativa de todas las corrutinas
+
+3. **Arquitectura:**
+   - MVVM (Model-View-ViewModel)
+   - Repository pattern para acceso a imágenes
+   - Use cases para aplicar filtros
+   - No usar inyección de dependencias (opcional)
+
+4. **Persistencia:**
+   - SharedPreferences o DataStore para configuración
+   - Archivos JSON para historial de proyectos
+   - Archivos de imagen en la carpeta de la app
+
+#### Interfaz gráfica (Jetpack Compose)
+
+1. **Pantallas principales:**
+   - Galería de imágenes (grid)
+   - Editor de imagen individual
+   - Procesamiento por lotes
+   - Historial de proyectos
+   - Configuración
+
+2. **Componentes:**
+   - Material 3 Design System
+   - TopAppBar con título y acciones
+   - Bottom sheet para selección de filtros
+   - Sliders para ajustar parámetros de filtros
+   - Progress indicators (linear y circular)
+   - Diálogos para confirmaciones
+   - Animaciones al cambiar entre imagen original y editada
+
+3. **UX:**
+   - Feedback visual para cada filtro aplicado
+   - Estados de carga mientras se procesa
+   - Gestos: pinch-to-zoom, swipe para comparar antes/después
+   - Deshacer/rehacer cambios (stack de acciones)
+   - Indicador de rendimiento (FPS, tiempo de procesamiento)
+
+### Entregables específicos
+
+1. **Archivo `.apk`** para instalación directa
+
+2. **Vídeo demostrativo (6-10 minutos):**
+   - Carga de imágenes
+   - Aplicación de diferentes filtros
+   - Demostración de procesamiento paralelo (múltiples imágenes)
+   - Comparación de tiempos (1 imagen vs. múltiples en paralelo)
+   - Preview en tiempo real
+   - Guardado y compartir
+
+3. **Código fuente bien organizado:**
+   - Estructura clara de paquetes
+   - Algoritmos de filtros comentados
+   - README con instrucciones y explicación de paralelización
+
+---
+
+## Proyecto 4: Sistema de Simulación de Tráfico Urbano 🚦
+
+**Plataforma:** Solo Android
+
+### Descripción
+
+Desarrolla una aplicación Android que simule el tráfico de una ciudad con múltiples vehículos, semáforos y cruces, usando hilos y corrutinas para gestionar el movimiento independiente de cada entidad. La simulación debe ser visual, en tiempo real y permitir configurar diferentes escenarios de tráfico.
+
+### Funcionalidades obligatorias
+
+#### Simulación de tráfico
+
+1. **Mapa de la ciudad:**
+   - Rejilla de calles (por ejemplo, 10x10 bloques)
+   - Múltiples tipos de calles:
+     - Calles horizontales y verticales
+     - Cruces (intersecciones)
+     - Rotondas (opcional)
+   - Vista personalizada de Canvas para dibujar
+   - Zoom y pan para explorar el mapa
+
+2. **Vehículos:**
+   - 20-50 vehículos simultáneos en la simulación
+   - Cada vehículo en un hilo/corrutina independiente
+   - Tipos de vehículos:
+     - Coches (velocidad media)
+     - Autobuses (velocidad baja, mayor tamaño)
+     - Motos (velocidad alta)
+     - Ambulancias (prioridad en semáforos)
+   - Propiedades de cada vehículo:
+     - Posición actual (x, y)
+     - Velocidad
+     - Destino (punto de llegada)
+     - Color identificativo
+     - Ruta a seguir
+   - Comportamiento realista:
+     - Seguir calles (no atravesar edificios)
+     - Parar en semáforos en rojo
+     - Evitar colisiones con otros vehículos
+     - Respetar distancia de seguridad
+
+3. **Semáforos:**
+   - 5-10 semáforos en cruces
+   - Cada semáforo con un hilo/corrutina independiente
+   - Ciclos automáticos:
+     - Verde → Amarillo → Rojo → Verde
+     - Tiempos configurables (5s, 10s, 15s)
+   - Sincronización de semáforos en cruces:
+     - Cuando uno es verde, el perpendicular es rojo
+   - Semáforos con prioridad para ambulancias
+   - Indicador visual del estado (colores)
+
+4. **Lógica de movimiento:**
+   - Cada vehículo calcula su ruta al destino
+   - Algoritmo simple de pathfinding (por ejemplo, seguir eje X, después Y)
+   - Actualización de posición cada X milisegundos
+   - Detección de obstáculos (semáforos, otros vehículos)
+   - Espera si hay obstáculo
+   - Reasignación de destino cuando se llega
+
+#### Configuración de la simulación
+
+1. **Parámetros configurables:**
+   - Número de vehículos (5-100)
+   - Velocidad de la simulación (0.5x, 1x, 2x, 5x)
+   - Tiempo de ciclo de los semáforos
+   - Densidad de tráfico (baja, media, alta)
+   - Activar/desactivar colisiones
+   - Activar/desactivar semáforos (modo caos)
+
+2. **Escenarios predefinidos:**
+   - Tráfico ligero (10 vehículos)
+   - Hora punta (50 vehículos)
+   - Emergencia (ambulancias con prioridad)
+   - Sin semáforos (comprobar caos)
+
+3. **Controles de la simulación:**
+   - Iniciar/pausar/reanudar
+   - Resetear simulación
+   - Modo paso a paso (avanzar frame a frame)
+   - Acelerar/desacelerar tiempo
+
+#### Estadísticas y visualización
+
+1. **Estadísticas en tiempo real:**
+   - Número de vehículos activos
+   - Vehículos en movimiento vs. parados
+   - Velocidad media del tráfico
+   - Tiempo medio de espera en semáforos
+   - Número de colisiones evitadas
+   - Vehículos que llegaron al destino
+   - Tiempo total de simulación
+
+2. **Visualización del mapa:**
+   - Vista superior (bird's eye)
+   - Dibujar calles con colores
+   - Dibujar vehículos con forma y color
+   - Dibujar semáforos con color actual (R/Y/G)
+   - Animación fluida del movimiento
+   - Rastro de vehículos (opcional)
+   - Minimap para orientación
+
+3. **Detalles de entidades:**
+   - Clic en un vehículo para ver:
+     - ID
+     - Tipo
+     - Velocidad actual
+     - Destino
+     - Tiempo en movimiento
+     - Distancia recorrida
+   - Clic en un semáforo para ver:
+     - Estado actual
+     - Tiempo hasta cambio
+     - Vehículos esperando
+
+4. **Gráficos:**
+   - Gráfico de líneas con velocidad media a lo largo del tiempo
+   - Gráfico de barras con vehículos por estado (moviendo, parado, llegado)
+   - Gráfico de densidad de tráfico por zona
+
+#### Gestión de eventos
+
+1. **Eventos aleatorios:**
+   - Accidente: 2 vehículos colisionan, bloquean calle por X segundos
+   - Obras: cerrar una calle temporalmente
+   - Congestión: aumentar número de vehículos en una zona
+   - Vehículo de emergencia: ambulancia con prioridad
+
+2. **Notificaciones:**
+   - Notificar cuando hay accidente
+   - Notificar cuando tráfico está congestionado
+   - Alertas de colisiones
+
+#### Requisitos técnicos de concurrencia
+
+1. **Hilos y corrutinas:**
+   - Cada vehículo en una corrutina independiente
+   - Cada semáforo en una corrutina independiente
+   - Corrutina maestra para actualizar UI (60 FPS)
+   - `Dispatchers.Default` para lógica de movimiento
+   - `Dispatchers.Main` para dibujar en Canvas
+   - Flow para emitir cambios de estado
+
+2. **Sincronización:**
+   - ConcurrentHashMap para posiciones de vehículos
+   - Locks para acceso a cruces (evitar 2 vehículos en el mismo punto)
+   - Semaphore para limitar vehículos en zonas críticas
+   - Evitar deadlocks cuando múltiples vehículos esperan
+   - AtomicInteger para IDs de vehículos
+
+3. **Detección de colisiones:**
+   - Comprobar distancia entre vehículos
+   - Bloquear movimiento si hay colisión inminente
+   - Thread-safe al acceder a las posiciones
+
+4. **Persistencia:**
+   - Guardar configuración de la simulación en SharedPreferences
+   - Guardar estadísticas de sesiones previas en archivos JSON
+   - Exportar registro de simulación a CSV
+
+#### Interfaz gráfica (Jetpack Compose + Canvas)
+
+1. **Pantallas:**
+   - Configuración inicial
+   - Visualización de la simulación (Canvas)
+   - Panel de estadísticas
+   - Historial de simulaciones
+   - Configuración avanzada
+
+2. **Componentes:**
+   - Vista personalizada de Canvas para mapa
+   - Sliders para configurar parámetros
+   - Botones de control (play, pause, reset)
+   - Panel de estadísticas en overlay
+   - Diálogo de detalles al clic en entidad
+
+3. **Material Design 3:**
+   - Tema claro/oscuro
+   - Animaciones fluidas
+   - Indicadores de estado
+
+### Entregables específicos
+
+1. **Archivo `.apk`** para instalación
+
+2. **Vídeo demostrativo (6-10 minutos):**
+   - Configuración de escenarios
+   - Simulación con pocos vehículos (ver comportamiento detallado)
+   - Simulación con muchos vehículos (hora punta)
+   - Mostrar semáforos funcionando
+   - Demostrar eventos (accidente, emergencia)
+   - Mostrar estadísticas y gráficos
+   - Comparar escenarios con y sin semáforos
+
+3. **Código fuente:**
+   - Algoritmos de movimiento y pathfinding comentados
+   - Explicar sincronización de semáforos y vehículos
    - README con instrucciones
+
+---
+
+## Formato de Entrega y Documentación
+
+### Documentación obligatoria
+
+Todos los proyectos deben incluir una **memoria técnica en formato PDF** que cumpla con los formatos establecidos en el módulo y que contenga los siguientes apartados:
+
+#### Estructura de la memoria
+
+1. **Portada:**
+   - Título del proyecto
+   - Nombre del alumno/a
+   - Fecha de entrega
+   - Módulo: Programación de Servicios y Procesos
+
+2. **Índice** paginado
+
+3. **Apartados principales:**
+   *(los apartados específicos serán completados por el/la docente)*
+
+4. **Anexos:**
+   - Capturas de pantalla de la aplicación
    - Diagramas de arquitectura
-   - Explicación de decisiones de diseño
+   - Manual de usuario básico
 
-## Entrega
+### Entregables técnicos
 
-Cada proyecto debe incluir:
-- Código fuente completo
-- README con instrucciones de ejecución
-- Documentación técnica (arquitectura, decisiones de diseño)
-- Diagramas relevantes (clases, secuencia, threading)
-- Tests unitarios básicos
-- Video demo de 3-5 minutos (opcional pero recomendado)
+#### Para proyectos multiplataforma (1 y 2):
+
+1. **Versión Windows:**
+   - Archivo `.exe` ejecutable (usando jpackage, launch4j o similar)
+   - **O** instalador `.msi` / `.exe` para instalación completa
+   - La aplicación debe ejecutarse sin requerir que el usuario instale JVM u otras dependencias
+
+2. **Versión Android:**
+   - Archivo `.apk` para instalación directa
+   - Probado en dispositivos con API 26+ (Android 8.0 o superior)
+
+3. **Vídeo demostrativo:**
+   - Duración: 5-10 minutos
+   - Debe mostrar el funcionamiento **en ambas plataformas** (Windows y Android)
+   - Demostrar todas las funcionalidades principales especificadas
+   - Puede estar comentado en voz o con subtítulos explicativos
+   - Formato: MP4, MOV o similar
+
+#### Para proyectos Android (3 y 4):
+
+1. **Archivo `.apk`:**
+   - APK de depuración o release (con firma habilitada)
+   - Indicar requisitos mínimos (API level, permisos)
+
+2. **Vídeo demostrativo:**
+   - Duración: 5-10 minutos
+   - Mostrar todas las funcionalidades principales
+   - Puede estar comentado o con subtítulos
+
+#### Código fuente
+
+1. **Repositorio Git:**
+   - Código organizado con estructura clara de paquetes/módulos
+   - README.md con:
+     - Descripción del proyecto
+     - Tecnologías utilizadas
+     - Instrucciones de compilación
+     - Instrucciones de ejecución
+     - Dependencias necesarias
+     - Capturas de pantalla
+
+2. **Calidad del código:**
+   - Comentarios en funciones y clases principales
+   - Nombres de variables y funciones descriptivos
+   - Seguir buenas prácticas de Kotlin
+   - Organización lógica en capas (UI, lógica, datos)
+
+---
+
+## Plazos y consideraciones
+
+- **Fecha límite de entrega:** *(será establecida por el/la docente)*
+- **Formato de entrega:** *(ZIP o repositorio Git según indicaciones)*
+- Consultas sobre los proyectos: *(horario de tutorías)*
+- Es **obligatorio** que las aplicaciones funcionen correctamente en ambas plataformas especificadas
+- Trabajos que no cumplan los requisitos mínimos no serán evaluados
+
+---
+
+:::tip Recomendaciones
+- Comienza por el **proyecto más sencillo** para ti
+- Planifica bien la arquitectura antes de comenzar a codificar
+- Prueba con frecuencia en ambas plataformas (para KMP)
+- No dejes la documentación para el final
+- Pide ayuda si tienes dificultades con algún concepto
+:::
+
+:::warning Importante
+Todos los proyectos deben ser **trabajo original**. El uso de código copiado de Internet sin citar o trabajos hechos por otras personas resultará en una calificación de 0.
+:::
