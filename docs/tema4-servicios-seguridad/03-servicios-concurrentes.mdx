@@ -1,0 +1,133 @@
+---
+sidebar_position: 3
+title: Servicios Concurrentes
+---
+
+# Servicios Concurrentes y Disponibilidad
+
+Un servicio en red útil rara vez atiende a un solo usuario. Pensemos en un servidor web, un servidor de base de datos o un juego online: todos deben ser capaces de gestionar cientos o miles de peticiones simultáneamente.
+
+En este apartado profundizaremos en las arquitecturas que permiten esta concurrencia y cómo garantizar que nuestro servicio esté siempre disponible.
+
+## Estrategias de Concurrencia
+
+A la hora de diseñar un servidor, podemos optar por diferentes modelos de gestión de conexiones.
+
+### 1. Servidor Iterativo (Bloqueante)
+Es el modelo más simple. El servidor acepta una conexión, la procesa completamente y luego pasa a la siguiente.
+- **Ventaja:** Muy fácil de programar y depurar.
+- **Desventaja:** Si una petición tarda mucho (ej. procesar un archivo grande), todos los demás clientes deben esperar. No aprovecha los procesadores multinúcleo.
+- **Uso:** Solo para servicios muy simples o de uso interno y esporádico.
+
+### 2. Servidor Concurrente (Un hilo por cliente)
+Como vimos en el Tema 3, el servidor crea un nuevo hilo de ejecución para cada cliente que se conecta.
+- **Ventaja:** Los clientes no se bloquean entre sí. Aprovecha la CPU.
+- **Desventaja:** Crear un hilo es costoso en memoria y tiempo de CPU. Si llegan 10,000 clientes, el sistema operativo colapsará intentando gestionar 10,000 hilos (context switching).
+- **Uso:** Servicios con carga moderada.
+
+### 3. Pool de Hilos (Thread Pool)
+En lugar de crear hilos ilimitadamente, creamos un conjunto fijo de hilos (ej. 100) al iniciar el servidor.
+- Cuando llega un cliente, se le asigna un hilo libre del pool.
+- Si todos los hilos están ocupados, el cliente se pone en una cola de espera.
+- Al terminar, el hilo no muere, sino que vuelve al pool para atender a otro cliente.
+- **Ventaja:** Controlamos el uso de recursos y evitamos la saturación del servidor.
+- **Implementación en Kotlin/Java:** `ExecutorService`.
+
+```kotlin
+import java.net.ServerSocket
+import java.util.concurrent.Executors
+
+fun main() {
+    val serverSocket = ServerSocket(8080)
+    // Creamos un pool de 10 hilos
+    val pool = Executors.newFixedThreadPool(10)
+    
+    println("Servidor con Thread Pool iniciado...")
+
+    while (true) {
+        val clientSocket = serverSocket.accept()
+        
+        // En lugar de crear un hilo manual, le pasamos la tarea al pool
+        pool.execute {
+            try {
+                println("Atendiendo cliente en ${Thread.currentThread().name}")
+                // Lógica de atención al cliente...
+                Thread.sleep(2000) // Simulamos trabajo
+                clientSocket.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+}
+```
+
+### 4. E/S No Bloqueante (NIO / Asíncrono)
+Es el modelo más escalable (usado por Nginx, Node.js, Netty). Un solo hilo puede gestionar miles de conexiones.
+- En lugar de bloquearse esperando a leer datos (`read()`), el hilo pregunta al sistema operativo: "¿Qué sockets tienen datos listos?".
+- Solo procesa los que tienen actividad.
+- En Kotlin, esto se facilita enormemente con las **Corrutinas**.
+
+```kotlin
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
+import io.ktor.utils.io.*
+import kotlinx.coroutines.*
+import java.net.InetSocketAddress
+
+// Ejemplo conceptual usando Ktor Network (requiere librería externa)
+fun main() = runBlocking {
+    val selectorManager = ActorSelectorManager(Dispatchers.IO)
+    val serverSocket = aSocket(selectorManager).tcp().bind(InetSocketAddress("127.0.0.1", 9002))
+    
+    println("Servidor Asíncrono iniciado...")
+    
+    while (true) {
+        val socket = serverSocket.accept()
+        
+        // Lanzamos una corrutina (muy ligera) por cada cliente
+        launch {
+            val input = socket.openReadChannel()
+            val output = socket.openWriteChannel(autoFlush = true)
+            
+            try {
+                while (true) {
+                    val line = input.readUTF8Line() ?: break
+                    output.writeStringUtf8("Eco: $line\n")
+                }
+            } catch (e: Throwable) {
+                // Manejo de error
+            } finally {
+                socket.close()
+            }
+        }
+    }
+}
+```
+
+## Disponibilidad y Escalabilidad
+
+La **disponibilidad** es la medida de tiempo en que un servicio está operativo y accesible. Se suele medir en "nueves" (ej. 99.9% de disponibilidad).
+
+Para garantizar la disponibilidad ante una alta demanda, necesitamos **escalabilidad**:
+
+### Escalabilidad Vertical (Scale Up)
+Añadir más recursos a la máquina servidor (más RAM, mejor CPU).
+- **Límite:** Llega un punto en que el hardware es demasiado caro o no existe hardware más potente.
+- **Punto único de fallo:** Si esa máquina cae, el servicio se detiene.
+
+### Escalabilidad Horizontal (Scale Out)
+Añadir más máquinas (nodos) que ejecuten el mismo servicio.
+- Requiere un **Balanceador de Carga** (Load Balancer) que distribuya las peticiones entre los servidores.
+- Si un nodo cae, los otros siguen funcionando (Alta Disponibilidad).
+
+## Verificación de la Disponibilidad (Health Checks)
+
+¿Cómo sabemos si nuestro servicio está funcionando correctamente? No basta con que el proceso esté corriendo; podría estar bloqueado o sin conexión a la base de datos.
+
+Implementar un endpoint de **Health Check** es una buena práctica:
+- El servidor expone una ruta especial (ej. `/health` o `/ping`).
+- Al recibir una petición ahí, el servidor hace comprobaciones internas (¿tengo conexión a la BD? ¿tengo espacio en disco?).
+- Si todo está bien, devuelve `200 OK`. Si no, `500 Error`.
+
+Sistemas externos de monitorización llaman a esta ruta periódicamente para verificar el estado "real" del servicio.

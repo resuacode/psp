@@ -1,0 +1,120 @@
+---
+sidebar_position: 7
+title: Proyectos - Seguridad y Servicios
+---
+
+# Proyectos: Servicios en Red y APIs
+
+Estos proyectos están diseñados para aplicar los conocimientos sobre consumo de servicios web (APIs REST) y la implementación de seguridad en aplicaciones. El objetivo es construir aplicaciones conectadas que consuman datos reales de internet y los presenten de forma atractiva, además de un proyecto enfocado específicamente en la seguridad.
+
+:::info Nota importante
+Se proponen 4 proyectos. Dos de ellos deben desarrollarse como aplicaciones **Kotlin Multiplatform (KMP) para Escritorio (Windows)**. Los otros dos deben ser **KMP para Escritorio (Windows) y Android**.
+:::
+
+---
+
+## Proyecto 1: Gestor de Contraseñas "Fortress" 🛡️
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows + Android)
+**Enfoque:** Seguridad y Criptografía
+
+### Descripción
+
+Desarrolla una "bóveda" digital segura para almacenar contraseñas. La aplicación nunca debe guardar las contraseñas en texto plano. Todo debe estar cifrado utilizando una "Contraseña Maestra" que solo el usuario conoce y que **nunca** se guarda en el dispositivo.
+
+### Funcionalidades obligatorias
+
+#### Seguridad y Criptografía
+1.  **Cifrado AES-256:** La base de datos local (o archivo JSON) debe estar cifrada completamente.
+2.  **Derivación de Claves (PBKDF2/Argon2):** La clave AES no es la contraseña maestra, sino una derivada de ella usando un algoritmo lento con *salt*.
+3.  **Memoria Segura:** Intentar limpiar las variables que contienen la contraseña maestra de la memoria RAM lo antes posible.
+
+#### Interfaz Gráfica
+- **Login:** Pantalla única pidiendo la contraseña maestra para descifrar la bóveda.
+- **Lista de Credenciales:** Vista con buscador para filtrar por sitio web.
+- **Generador de Contraseñas:** Herramienta para crear passwords fuertes (longitud, símbolos, etc.).
+- **Portapapeles Seguro:** Botón para copiar contraseña que se borre del portapapeles automáticamente a los 30 segundos.
+
+#### Requisitos Técnicos
+- **KMP:** Lógica de cifrado compartida.
+- **Persistencia:** Uso de SQLDelight o archivos planos, pero siempre cifrados.
+
+---
+
+## Proyecto 2: Explorador de la NASA (Mars Rover Photos) 🚀
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows + Android)
+**Enfoque:** Consumo de API REST + Imágenes
+
+### Descripción
+
+Crea una aplicación que permita explorar las fotos tomadas por los rovers de la NASA en Marte (Curiosity, Opportunity, Spirit). La app consumirá la API pública de la NASA.
+
+### Funcionalidades obligatorias
+
+#### Comunicación y Red
+1.  **API Client:** Implementar un cliente HTTP (Ktor o Retrofit) para consumir la [NASA Mars Rover Photos API](https://api.nasa.gov/).
+2.  **Filtrado:** Permitir al usuario seleccionar el Rover, la cámara (FHAZ, RHAZ, MAST...) y la fecha terrestre (Sol).
+3.  **Carga de Imágenes:** Descargar y mostrar las imágenes de forma asíncrona (usando Coil o Kamel).
+
+#### Interfaz Gráfica
+- **Galería:** Grid de imágenes con scroll infinito o paginación.
+- **Detalle:** Al pulsar una foto, verla en pantalla completa con información técnica (fecha, cámara, rover).
+- **Favoritos:** Guardar localmente las fotos favoritas.
+
+#### Requisitos Técnicos
+- **API Key:** Gestionar la API Key de forma segura (no subirla al repo público).
+- **Manejo de Errores:** Mostrar mensajes amigables si la API falla o no hay internet.
+
+---
+
+## Proyecto 3: Buscador de Películas y Series (OMDb API) 🎬
+
+**Plataformas:** Kotlin Multiplatform (Solo Escritorio Windows)
+**Enfoque:** Consumo de API REST + Búsqueda
+
+### Descripción
+
+Desarrolla una aplicación de escritorio para buscar información sobre películas y series utilizando la Open Movie Database (OMDb).
+
+### Funcionalidades obligatorias
+
+#### Comunicación y Red
+1.  **Búsqueda en Tiempo Real:** Consumir la [OMDb API](http://www.omdbapi.com/) para buscar títulos mientras el usuario escribe (con debounce para no saturar).
+2.  **Detalles:** Obtener información extendida: sinopsis, director, actores, premios y puntuaciones (Rotten Tomatoes, IMDB).
+
+#### Interfaz Gráfica (Compose for Desktop)
+- **Barra de Búsqueda:** Prominente en la parte superior.
+- **Lista de Resultados:** Tarjetas con el póster y el título.
+- **Panel Lateral de Detalle:** Al seleccionar una película, mostrar toda la información a la derecha.
+- **Exportar:** Botón para generar un PDF o TXT con la ficha de la película seleccionada.
+
+#### Requisitos Técnicos
+- **Serialización:** Mapeo complejo de JSON a objetos Kotlin.
+- **Cache:** Guardar las últimas 10 búsquedas para acceso rápido offline.
+
+---
+
+## Proyecto 4: Dashboard de Calidad del Aire (OpenWeatherMap / AQICN) 🌍
+
+**Plataformas:** Kotlin Multiplatform (Solo Escritorio Windows)
+**Enfoque:** Consumo de API REST + Visualización de Datos Ambientales
+
+### Descripción
+
+Una aplicación de escritorio para monitorizar la calidad del aire y las condiciones meteorológicas en diferentes ciudades del mundo en tiempo real, ideal para personas con alergias o interés ambiental.
+
+### Funcionalidades obligatorias
+
+#### Comunicación y Red
+1.  **Datos Ambientales:** Consumir la [Air Quality Open Data Platform (AQICN)](https://aqicn.org/api/) o OpenWeatherMap para obtener el índice de calidad del aire (AQI), PM2.5, PM10 y temperatura.
+2.  **Geolocalización IP:** Usar una API gratuita de IP-to-Location para detectar la ciudad aproximada del usuario al iniciar.
+
+#### Interfaz Gráfica (Compose for Desktop)
+- **Mapa de Calor (Simplificado):** O una lista de estaciones de medición cercanas con códigos de colores (Verde=Bueno, Rojo=Peligroso).
+- **Gráficos Históricos:** Mostrar la evolución de la contaminación en las últimas 24 horas.
+- **Alertas:** Notificación visual si el nivel de contaminación supera un umbral seguro en la ciudad seleccionada.
+
+#### Requisitos Técnicos
+- **Manejo de JSON Anidado:** Las respuestas de estas APIs suelen tener estructuras complejas que requieren un buen diseño de las Data Classes.
+- **Refresco Periódico:** Actualización de datos cada 30 minutos.

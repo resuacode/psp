@@ -34,3 +34,194 @@ Esta unidad final abordará la creación de servicios basados en protocolos, la 
 5. Depuración y Documentación de Aplicaciones Seguras y Servicios
    - Depuración de servicios en red y aplicaciones seguras. 
    - Documentación de políticas e implementaciones de seguridad.
+
+## Ejercicios prácticos
+
+:::info
+Los siguientes ejercicios están diseñados para practicar la implementación de seguridad y criptografía en Kotlin.
+:::
+
+### Ejercicio 1: Hashing de Contraseñas con Salt
+**Enunciado:** Crea un programa que simule el registro y login de un usuario.
+1. **Registro:** Pide una contraseña, genera un "salt" aleatorio, calcula el hash SHA-256 de (contraseña + salt) y muestra los valores guardados.
+2. **Login:** Pide la contraseña de nuevo, recupera el salt generado anteriormente, recalcula el hash y verifica si coincide.
+**Requisitos:**
+- Usar `MessageDigest` para SHA-256.
+- Usar `SecureRandom` para generar el salt.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="PasswordHasher.kt"
+import java.security.MessageDigest
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.Scanner
+
+data class UsuarioDB(val salt: String, val hash: String)
+
+fun main() {
+    val scanner = Scanner(System.`in`)
+    
+    // --- FASE DE REGISTRO ---
+    println("=== REGISTRO ===")
+    println("Introduce tu nueva contraseña:")
+    val passwordRegistro = scanner.nextLine()
+    
+    // 1. Generar Salt
+    val random = SecureRandom()
+    val saltBytes = ByteArray(16)
+    random.nextBytes(saltBytes)
+    val salt = Base64.getEncoder().encodeToString(saltBytes)
+    
+    // 2. Hashear
+    val hash = hashear(passwordRegistro, salt)
+    
+    // Simular guardado en BD
+    val usuarioGuardado = UsuarioDB(salt, hash)
+    println("Usuario registrado. Guardado en BD -> Salt: $salt, Hash: $hash")
+    
+    // --- FASE DE LOGIN ---
+    println("\n=== LOGIN ===")
+    println("Introduce tu contraseña para entrar:")
+    val passwordLogin = scanner.nextLine()
+    
+    // 3. Verificar
+    val hashIntento = hashear(passwordLogin, usuarioGuardado.salt)
+    
+    if (hashIntento == usuarioGuardado.hash) {
+        println("¡Acceso CONCEDIDO!")
+    } else {
+        println("¡Acceso DENEGADO!")
+    }
+}
+
+fun hashear(password: String, salt: String): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    // Añadimos el salt antes de la contraseña
+    md.update(Base64.getDecoder().decode(salt))
+    val hashBytes = md.digest(password.toByteArray())
+    return Base64.getEncoder().encodeToString(hashBytes)
+}
+```
+</details>
+
+### Ejercicio 2: Cifrado Simétrico de Texto (AES)
+**Enunciado:** Implementa una utilidad que permita cifrar y descifrar una frase utilizando el algoritmo AES.
+**Requisitos:**
+- Generar una clave AES de 128 o 256 bits.
+- Mostrar el mensaje original, el mensaje cifrado (en Base64 para que sea legible) y el mensaje descifrado.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="CifradoAES.kt"
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import java.util.Base64
+
+fun main() {
+    val mensajeOriginal = "Este es un mensaje ultra secreto"
+    println("Original: $mensajeOriginal")
+
+    // 1. Generar Clave
+    val keyGen = KeyGenerator.getInstance("AES")
+    keyGen.init(256)
+    val secretKey = keyGen.generateKey()
+
+    // 2. Cifrar
+    val cipher = Cipher.getInstance("AES")
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+    val bytesCifrados = cipher.doFinal(mensajeOriginal.toByteArray())
+    val textoCifrado = Base64.getEncoder().encodeToString(bytesCifrados)
+    
+    println("Cifrado (Base64): $textoCifrado")
+
+    // 3. Descifrar
+    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+    val bytesDescifrados = cipher.doFinal(Base64.getDecoder().decode(textoCifrado))
+    val textoDescifrado = String(bytesDescifrados)
+    
+    println("Descifrado: $textoDescifrado")
+}
+```
+</details>
+
+### Ejercicio 3: Consumo de API REST con HttpClient
+**Enunciado:** Utiliza la clase `java.net.http.HttpClient` (disponible desde Java 11) para hacer una petición GET a una API pública (por ejemplo, `https://jsonplaceholder.typicode.com/todos/1`) y mostrar el JSON recibido.
+**Requisitos:**
+- La petición debe ser asíncrona o síncrona.
+- Imprimir el código de estado y el cuerpo de la respuesta.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ClienteAPI.kt"
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+
+fun main() {
+    val client = HttpClient.newHttpClient()
+    
+    val request = HttpRequest.newBuilder()
+        .uri(URI.create("https://jsonplaceholder.typicode.com/todos/1"))
+        .GET()
+        .build()
+
+    println("Enviando petición...")
+    
+    val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+    
+    println("Código de estado: ${response.statusCode()}")
+    println("Cuerpo de la respuesta:")
+    println(response.body())
+}
+```
+</details>
+
+### Ejercicio 4: Servidor HTTP con Control de Acceso (Token)
+**Enunciado:** Crea un servidor HTTP simple (usando `HttpServer`) que proteja una ruta `/secreto`.
+- Si el cliente envía una cabecera `Authorization: 12345`, el servidor responde con información secreta (código 200).
+- Si no envía la cabecera o es incorrecta, responde con "Acceso Denegado" (código 401 o 403).
+**Requisitos:**
+- Usar `com.sun.net.httpserver.HttpServer`.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorProtegido.kt"
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.io.OutputStream
+
+fun main() {
+    val server = HttpServer.create(InetSocketAddress(8000), 0)
+    
+    server.createContext("/secreto") { exchange ->
+        // Leer cabeceras
+        val authHeader = exchange.requestHeaders.getFirst("Authorization")
+        
+        val respuesta: String
+        val codigo: Int
+        
+        if (authHeader == "12345") {
+            codigo = 200
+            respuesta = "¡ACCESO CONCEDIDO! El código nuclear es 0000."
+        } else {
+            codigo = 403 // Forbidden
+            respuesta = "ACCESO DENEGADO. Token inválido o ausente."
+        }
+        
+        exchange.sendResponseHeaders(codigo, respuesta.length.toLong())
+        val os = exchange.responseBody
+        os.write(respuesta.toByteArray())
+        os.close()
+    }
+    
+    println("Servidor protegido escuchando en puerto 8000...")
+    server.start()
+}
+```
+</details>

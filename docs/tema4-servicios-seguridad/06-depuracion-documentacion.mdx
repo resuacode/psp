@@ -1,0 +1,61 @@
+---
+sidebar_position: 6
+title: Depuración y Documentación
+---
+
+# Depuración y Documentación de Aplicaciones Seguras
+
+El desarrollo de aplicaciones seguras no termina al escribir el código. La fase de depuración y documentación es crítica para asegurar que las medidas de seguridad implementadas funcionan correctamente y son mantenibles en el tiempo.
+
+## Depuración de Servicios Seguros
+
+Depurar aplicaciones que usan SSL/TLS o criptografía es más complejo que depurar texto plano, precisamente porque los datos son ilegibles en tránsito.
+
+### 1. Depuración de SSL/TLS en la JVM
+
+Java proporciona una propiedad del sistema muy potente para ver qué está ocurriendo durante el "handshake" SSL (negociación de certificados y claves).
+
+- **Activar logs de depuración:** Añadir `-Djavax.net.debug=all` (o `ssl`) a los argumentos de la VM al ejecutar el programa.
+- **Qué buscar en los logs:**
+    - `trustStore is: ...`: Verifica que está cargando el almacén de confianza correcto.
+    - `ignore cert: ...`: Si el certificado es rechazado.
+    - `Cipher Suite: ...`: Qué algoritmo de cifrado se ha negociado.
+
+### 2. Herramientas Externas: OpenSSL
+
+`openssl` es la navaja suiza para depurar certificados desde la línea de comandos.
+
+- **Verificar un servidor remoto:**
+  ```bash
+  openssl s_client -connect localhost:8443 -showcerts
+  ```
+  Esto muestra toda la cadena de certificados que envía el servidor, permitiendo detectar si falta alguno intermedio o si ha caducado.
+
+### 3. Wireshark con Claves de Sesión
+
+Wireshark por defecto no puede leer tráfico HTTPS. Sin embargo, si configuramos nuestra aplicación Java para que vuelque las claves de sesión a un archivo, Wireshark puede usarlas para descifrar el tráfico capturado.
+
+## Documentación de Seguridad
+
+La seguridad por oscuridad (esperar que nadie encuentre el fallo porque no saben cómo funciona) no funciona. Debemos documentar claramente nuestras políticas.
+
+### 1. Documentación de Políticas de Seguridad
+
+Debemos especificar:
+- **Algoritmos usados:** "Se usa AES-256 para datos en reposo y TLS 1.3 para datos en tránsito".
+- **Gestión de claves:** "¿Dónde se guardan las claves privadas? ¿Quién tiene acceso? ¿Cada cuánto rotan?".
+- **Roles y Permisos:** Matriz de qué roles tienen acceso a qué recursos.
+
+### 2. Análisis de Vulnerabilidades (SAST/DAST)
+
+Es recomendable integrar herramientas automáticas en nuestro flujo de trabajo:
+- **SAST (Static Application Security Testing):** Analizan el código fuente buscando patrones inseguros (ej. `SonarQube`).
+    - Detecta: Contraseñas hardcodeadas, uso de MD5, inyección SQL.
+- **DAST (Dynamic Application Security Testing):** Atacan la aplicación en ejecución (ej. `OWASP ZAP`).
+    - Detecta: Cabeceras de seguridad faltantes, configuraciones SSL débiles.
+
+## Buenas Prácticas Finales
+
+1.  **Mantener dependencias actualizadas:** Muchas brechas de seguridad vienen por usar librerías antiguas con vulnerabilidades conocidas (CVEs). Usar herramientas como `OWASP Dependency Check`.
+2.  **Logs Seguros:** Asegurarse de que al depurar **NO** se escriban en los logs datos sensibles como contraseñas, tokens o números de tarjeta de crédito.
+3.  **Fail Safe:** Si algo falla en el módulo de seguridad, el sistema debe bloquearse (denegar acceso), no abrirse. "Por defecto, denegar".

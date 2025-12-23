@@ -1,0 +1,129 @@
+---
+sidebar_position: 4
+title: Programación Segura y Criptografía
+---
+
+# Fundamentos de la Programación Segura y Criptografía
+
+La seguridad no es una característica que se añade al final del desarrollo ("una capa extra"), sino que debe integrarse desde el diseño (**Security by Design**). En este apartado exploraremos los conceptos clave para proteger la información y la integridad de nuestros servicios.
+
+## Principios de la Seguridad de la Información (CIA)
+
+Cualquier sistema seguro debe garantizar la tríada CIA:
+
+1.  **Confidencialidad:** La información solo es accesible por personas autorizadas. (Ej. Encriptación).
+2.  **Integridad:** La información no ha sido modificada por terceros no autorizados. (Ej. Hashing, Firmas).
+3.  **Disponibilidad (Availability):** El sistema está operativo para los usuarios legítimos cuando lo necesitan. (Ej. Protección contra DDoS).
+
+## Criptografía
+
+La criptografía es la ciencia de cifrar y descifrar información. En programación, utilizamos librerías probadas (como `java.security` y `javax.crypto`) en lugar de inventar nuestros propios algoritmos.
+
+### 1. Hashing (Resumen Criptográfico)
+
+Una función hash toma una entrada de cualquier tamaño y devuelve una cadena de longitud fija (hash). Es **unidireccional**: no se puede recuperar el dato original a partir del hash.
+
+- **Uso:** Verificar integridad de archivos, almacenar contraseñas de forma segura.
+- **Algoritmos:**
+    - **Inseguros (NO USAR):** MD5, SHA-1 (vulnerables a colisiones).
+    - **Seguros:** SHA-256, SHA-512, SHA-3.
+
+```kotlin
+import java.security.MessageDigest
+
+fun hashSHA256(input: String): String {
+    val bytes = input.toByteArray()
+    val md = MessageDigest.getInstance("SHA-256")
+    val digest = md.digest(bytes)
+    // Convertir bytes a formato hexadecimal
+    return digest.joinToString("") { "%02x".format(it) }
+}
+
+fun main() {
+    val texto = "Hola Mundo"
+    println("Texto: $texto")
+    println("Hash SHA-256: ${hashSHA256(texto)}")
+}
+```
+
+### 2. Cifrado Simétrico
+
+Utiliza la **misma clave** tanto para cifrar como para descifrar.
+- **Ventaja:** Es muy rápido. Ideal para cifrar grandes volúmenes de datos.
+- **Desventaja:** El problema de la distribución de claves. ¿Cómo le envío la clave al receptor sin que nadie la intercepte?
+- **Algoritmos:** AES (Advanced Encryption Standard) es el estándar actual.
+
+```kotlin
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+
+fun main() {
+    // 1. Generar una clave AES
+    val keyGen = KeyGenerator.getInstance("AES")
+    keyGen.init(256) // Tamaño de clave
+    val secretKey: SecretKey = keyGen.generateKey()
+
+    val mensaje = "Mensaje Secreto"
+
+    // 2. Cifrar
+    val cipher = Cipher.getInstance("AES")
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+    val mensajeCifrado = cipher.doFinal(mensaje.toByteArray())
+    println("Cifrado (bytes): ${mensajeCifrado.size} bytes")
+
+    // 3. Descifrar
+    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+    val mensajeDescifradoBytes = cipher.doFinal(mensajeCifrado)
+    val mensajeDescifrado = String(mensajeDescifradoBytes)
+    
+    println("Descifrado: $mensajeDescifrado")
+}
+```
+
+### 3. Cifrado Asimétrico (Clave Pública)
+
+Utiliza un par de claves matemáticas relacionadas:
+- **Clave Pública:** Se comparte con todo el mundo. Se usa para **cifrar** mensajes destinados al propietario.
+- **Clave Privada:** Se mantiene en secreto absoluto. Se usa para **descifrar** los mensajes.
+
+También funciona a la inversa para **Firmas Digitales**:
+- Se firma con la Privada -> Se verifica con la Pública (garantiza autenticidad y no repudio).
+
+- **Ventaja:** Resuelve el problema del intercambio de claves.
+- **Desventaja:** Es computacionalmente muy lento.
+- **Algoritmos:** RSA, ECC (Curva Elíptica).
+
+### 4. Cifrado Híbrido (SSL/TLS)
+
+En la práctica (como en HTTPS), se combinan ambos mundos:
+1.  Se usa **Cifrado Asimétrico** (RSA/ECC) solo al principio para establecer la conexión y compartir de forma segura una clave temporal.
+2.  Una vez compartida la clave, se usa **Cifrado Simétrico** (AES) para transmitir los datos de la sesión a alta velocidad.
+
+## Prácticas de Programación Segura
+
+Más allá de la criptografía, debemos proteger nuestro código de vulnerabilidades comunes:
+
+1.  **Validación de Entradas:** NUNCA confiar en los datos que vienen del usuario.
+    - Evitar **Inyección SQL**: Usar PreparedStatements.
+    - Evitar **XSS (Cross-Site Scripting)**: Escapar caracteres especiales en HTML.
+2.  **Principio de Mínimo Privilegio:** El servicio debe ejecutarse con los permisos mínimos necesarios en el sistema operativo (no como root/admin).
+3.  **Gestión de Errores:** No mostrar trazas de error (stack traces) al usuario final, ya que revelan información sobre la estructura interna del sistema.
+4.  **Almacenamiento de Contraseñas:** NUNCA guardar contraseñas en texto plano. Usar algoritmos de hash lentos con "salt" (como BCrypt, Argon2 o PBKDF2) para dificultar los ataques de fuerza bruta.
+
+```kotlin
+// Ejemplo conceptual de verificación de password (pseudocódigo)
+
+fun registrarUsuario(password: String) {
+    val salt = generarSaltAleatorio()
+    val hash = hashLento(password, salt)
+    guardarEnBD(usuario, hash, salt)
+}
+
+fun login(password: String): Boolean {
+    val (hashGuardado, saltGuardado) = obtenerDeBD(usuario)
+    val hashIntento = hashLento(password, saltGuardado)
+    return hashIntento == hashGuardado
+}
+
+```

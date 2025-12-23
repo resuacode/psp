@@ -1,0 +1,264 @@
+---
+sidebar_position: 2
+title: Protocolos Estándar
+---
+
+# Implementación de Protocolos Estándar y Servicios
+
+Hasta ahora hemos trabajado en la capa de transporte (TCP/UDP), enviando bytes o texto crudo. Sin embargo, la mayoría de las aplicaciones modernas no reinventan la rueda, sino que utilizan **protocolos de capa de aplicación** estandarizados.
+
+En este apartado aprenderemos a utilizar librerías para interactuar con protocolos comunes como HTTP, FTP y SMTP, y cómo implementar servicios básicos basados en ellos.
+
+## Protocolos de Capa de Aplicación
+
+Un protocolo de aplicación define el formato y el orden de los mensajes intercambiados entre procesos, así como las acciones que se toman al recibir un mensaje. Al usar protocolos estándar, garantizamos la interoperabilidad entre sistemas heterogéneos.
+
+### HTTP (Hypertext Transfer Protocol)
+
+Es el protocolo base de la Web. Funciona bajo un esquema petición-respuesta.
+
+#### Cliente HTTP en Kotlin
+
+Aunque podemos usar `Socket` para hablar HTTP (enviando cadenas "GET /..."), Java y Kotlin nos ofrecen abstracciones de más alto nivel.
+
+**Opción 1: `java.net.HttpURLConnection` (Clásico)**
+Es la forma más básica disponible en el JDK, aunque su API es un poco antigua.
+
+```kotlin
+import java.net.URL
+import java.net.HttpURLConnection
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+fun main() {
+    val url = URL("http://example.com")
+    val conexion = url.openConnection() as HttpURLConnection
+    conexion.requestMethod = "GET"
+    
+    println("Código de respuesta: ${conexion.responseCode}")
+    
+    if (conexion.responseCode == 200) {
+        val reader = BufferedReader(InputStreamReader(conexion.inputStream))
+        val respuesta = StringBuilder()
+        var linea: String?
+        
+        while (reader.readLine().also { linea = it } != null) {
+            respuesta.append(linea).append("\n")
+        }
+        reader.close()
+        
+        println("Cuerpo de la respuesta:")
+        println(respuesta.toString().take(200) + "...") // Mostramos solo el principio
+    }
+}
+```
+
+**Opción 2: `java.net.http.HttpClient` (Moderno - Java 11+)**
+Una API mucho más limpia y moderna, que soporta HTTP/2 y operaciones asíncronas.
+
+```kotlin
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+
+fun main() {
+    val cliente = HttpClient.newHttpClient()
+    val solicitud = HttpRequest.newBuilder()
+        .uri(URI.create("http://example.com"))
+        .GET()
+        .build()
+
+    val respuesta = cliente.send(solicitud, HttpResponse.BodyHandlers.ofString())
+
+    println("Status: ${respuesta.statusCode()}")
+    println("Cuerpo: ${respuesta.body().take(100)}...")
+}
+```
+
+### Librerías Modernas en Kotlin: Ktor y Retrofit
+
+En el desarrollo profesional con Kotlin, especialmente en Android y Multiplatform, se prefiere el uso de librerías de terceros que ofrecen una API más idiomática, soporte para corrutinas y serialización automática de JSON.
+
+#### Ktor Client
+Ktor es un framework asíncrono creado por JetBrains. Su cliente es multiplataforma (funciona en JVM, Android, iOS, JS, Native), lo que lo hace ideal para proyectos KMP.
+
+**Dependencias necesarias (build.gradle.kts):**
+```kotlin
+implementation("io.ktor:ktor-client-core:2.3.7")
+implementation("io.ktor:ktor-client-cio:2.3.7") // Motor CIO (Coroutine I/O)
+implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
+implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
+```
+
+**Ejemplo Práctico (API de Chistes):**
+```kotlin
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.runBlocking
+
+fun main() = runBlocking {
+    val client = HttpClient(CIO)
+    
+    try {
+        // Hacemos una petición GET a una API pública real
+        val response: HttpResponse = client.get("https://api.chucknorris.io/jokes/random")
+        
+        println("Status: ${response.status}")
+        // bodyAsText() lee el cuerpo de la respuesta como String
+        println("Respuesta JSON: ${response.bodyAsText()}")
+    } catch (e: Exception) {
+        println("Error: ${e.message}")
+    } finally {
+        client.close()
+    }
+}
+```
+
+#### Retrofit
+Retrofit (de Square) es el estándar de facto en el desarrollo nativo de Android. Su filosofía es convertir tu API HTTP en una interfaz Kotlin.
+
+**Dependencias necesarias:**
+```kotlin
+implementation("com.squareup.retrofit2:retrofit:2.9.0")
+implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+```
+
+**Ejemplo Práctico (API de Usuarios):**
+```kotlin
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+
+// 1. Definir el modelo de datos (Data Class) que mapea el JSON
+data class Usuario(val id: Int, val name: String, val email: String)
+
+// 2. Definir la interfaz de la API
+interface JsonPlaceholderApi {
+    @GET("users/1")
+    fun getUsuario(): retrofit2.Call<Usuario> // Retorna un Call que podemos ejecutar
+}
+
+fun main() {
+    // 3. Crear la instancia de Retrofit
+    val retrofit = Retrofit.Builder()
+        .baseUrl("https://jsonplaceholder.typicode.com/")
+        .addConverterFactory(GsonConverterFactory.create()) // Usamos GSON para parsear JSON
+        .build()
+
+    val api = retrofit.create(JsonPlaceholderApi::class.java)
+
+    println("Consultando API con Retrofit...")
+
+    // 4. Hacer la llamada (execute() es síncrono, enqueue() sería asíncrono)
+    try {
+        val response = api.getUsuario().execute()
+        
+        if (response.isSuccessful) {
+            val usuario = response.body()
+            println("Usuario recuperado con éxito:")
+            println("Nombre: ${usuario?.name}")
+            println("Email: ${usuario?.email}")
+        } else {
+            println("Error en la petición: ${response.code()}")
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+#### Servidor HTTP Básico
+
+El JDK incluye un servidor HTTP ligero (`com.sun.net.httpserver.HttpServer`) ideal para pruebas o servicios simples sin necesidad de desplegar un servidor pesado como Tomcat o Apache.
+
+```kotlin
+import com.sun.net.httpserver.HttpServer
+import java.net.InetSocketAddress
+import java.io.OutputStream
+
+fun main() {
+    val server = HttpServer.create(InetSocketAddress(8000), 0)
+    
+    // Definir un contexto (ruta)
+    server.createContext("/hola") { exchange ->
+        val respuesta = "¡Hola desde el servidor HTTP en Kotlin!"
+        
+        // Enviar cabeceras (código 200 OK, longitud)
+        exchange.sendResponseHeaders(200, respuesta.length.toLong())
+        
+        // Enviar cuerpo
+        val os: OutputStream = exchange.responseBody
+        os.write(respuesta.toByteArray())
+        os.close()
+    }
+    
+    server.executor = null // Usa el ejecutor por defecto
+    println("Servidor HTTP iniciado en puerto 8000")
+    server.start()
+}
+```
+
+### FTP (File Transfer Protocol)
+
+FTP se utiliza para la transferencia de archivos. Implementar un cliente FTP desde cero con Sockets es complejo debido a que utiliza dos canales (uno de control y otro de datos).
+
+En Java/Kotlin, la librería estándar no incluye un cliente FTP completo. Lo habitual es utilizar **Apache Commons Net**.
+
+```kotlin
+// Ejemplo conceptual (requiere librería commons-net)
+
+val ftp = FTPClient()
+ftp.connect("ftp.servidor.com")
+ftp.login("usuario", "password")
+
+val archivo = File("documento.txt")
+val input = FileInputStream(archivo)
+ftp.storeFile("remoto.txt", input)
+
+ftp.logout()
+ftp.disconnect()
+
+```
+
+### SMTP (Simple Mail Transfer Protocol)
+
+Para el envío de correos electrónicos, utilizamos SMTP. Al igual que con FTP, se suelen usar librerías especializadas como **Jakarta Mail** (antes JavaMail).
+
+```kotlin
+// Ejemplo conceptual de envío de email
+
+val props = Properties()
+props["mail.smtp.host"] = "smtp.gmail.com"
+props["mail.smtp.port"] = "587"
+props["mail.smtp.auth"] = "true"
+props["mail.smtp.starttls.enable"] = "true"
+
+val session = Session.getInstance(props, object : Authenticator() {
+    override fun getPasswordAuthentication(): PasswordAuthentication {
+        return PasswordAuthentication("tu_correo@gmail.com", "tu_password")
+    }
+})
+
+val message = MimeMessage(session)
+message.setFrom(InternetAddress("tu_correo@gmail.com"))
+message.setRecipients(Message.RecipientType.TO, InternetAddress.parse("destino@email.com"))
+message.subject = "Prueba desde Kotlin"
+message.setText("Hola, este es un correo enviado desde una aplicación Kotlin.")
+
+Transport.send(message)
+
+```
+
+## Desarrollo de Servicios Propios
+
+A veces, los protocolos estándar no se ajustan a nuestras necesidades y debemos definir nuestro propio protocolo sobre TCP/UDP (como vimos en el Tema 3), o bien construir una API REST sobre HTTP.
+
+Al desarrollar un servicio, debemos definir claramente:
+1.  **Formato del mensaje:** ¿Texto (JSON, XML) o Binario?
+2.  **Delimitadores:** ¿Cómo sabe el servidor que el mensaje ha terminado? (ej. salto de línea, longitud fija).
+3.  **Estados:** ¿Es una comunicación *stateless* (como HTTP) o con estado (como FTP)?
+
+En el siguiente apartado veremos cómo gestionar la concurrencia para que estos servicios puedan atender a miles de usuarios.

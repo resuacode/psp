@@ -1,0 +1,140 @@
+---
+sidebar_position: 5
+title: Control de Acceso y Sockets Seguros
+---
+
+# Control de Acceso, Almacenamiento y Transmisión Segura
+
+En este apartado uniremos las piezas. Veremos cómo aplicar la seguridad para controlar quién accede a nuestro sistema y cómo proteger los datos mientras viajan por la red utilizando Sockets Seguros (SSL/TLS).
+
+## Autenticación y Autorización
+
+Es fundamental distinguir entre estos dos conceptos:
+
+- **Autenticación (Authentication):** Verificar la identidad del usuario. (¿Quién eres?).
+    - Métodos: Contraseña, Certificado Digital, Biometría, Token 2FA.
+- **Autorización (Authorization):** Verificar si el usuario autenticado tiene permiso para realizar una acción. (¿Qué puedes hacer?).
+    - Métodos: Listas de Control de Acceso (ACL), Roles (RBAC).
+
+### Gestión de Usuarios Basada en Roles (RBAC)
+
+En lugar de asignar permisos a cada usuario individualmente, creamos "Roles" (ej. Administrador, Editor, Lector) y asignamos usuarios a esos roles.
+
+```kotlin
+enum class Rol { ADMIN, USER, GUEST }
+
+data class Usuario(val nombre: String, val rol: Rol)
+
+class ServicioSeguro {
+    fun borrarBaseDeDatos(usuario: Usuario) {
+        if (usuario.rol == Rol.ADMIN) {
+            println("Base de datos borrada.")
+        } else {
+            throw SecurityException("Acceso denegado: Se requiere rol ADMIN")
+        }
+    }
+}
+```
+
+## Sockets Seguros (SSL/TLS)
+
+Hasta ahora, nuestros sockets TCP enviaban datos en texto plano. Cualquiera con Wireshark en la misma red podría leer los mensajes. Para evitarlo, usamos **SSLSocket** (Secure Sockets Layer), que ahora implementa el protocolo **TLS** (Transport Layer Security).
+
+TLS proporciona:
+1.  **Encriptación:** Nadie puede leer los datos.
+2.  **Integridad:** Nadie puede modificar los datos en tránsito.
+3.  **Autenticación:** Garantiza que nos conectamos al servidor real (mediante certificados).
+
+### Creación de un Servidor SSL en Kotlin
+
+Para crear un servidor SSL, necesitamos un **Keystore** (almacén de claves) que contenga el certificado digital del servidor y su clave privada.
+
+:::info Generar un Keystore de prueba
+Podemos generar un certificado autofirmado usando la herramienta `keytool` de Java:
+`keytool -genkey -alias miServidor -keyalg RSA -keystore servidor.jks -storepass 123456`
+:::
+
+```kotlin
+import javax.net.ssl.SSLServerSocket
+import javax.net.ssl.SSLServerSocketFactory
+import java.io.PrintWriter
+
+fun main() {
+    // Configurar propiedades para indicar dónde está el certificado
+    System.setProperty("javax.net.ssl.keyStore", "servidor.jks")
+    System.setProperty("javax.net.ssl.keyStorePassword", "123456")
+
+    try {
+        val sslFactory = SSLServerSocketFactory.getDefault() as SSLServerSocketFactory
+        val sslServerSocket = sslFactory.createServerSocket(8443) as SSLServerSocket
+        
+        println("Servidor SSL iniciado en puerto 8443...")
+
+        while (true) {
+            val socket = sslServerSocket.accept()
+            
+            val writer = PrintWriter(socket.getOutputStream(), true)
+            writer.println("¡Hola! Estás conectado de forma segura mediante TLS.")
+            
+            socket.close()
+        }
+    } catch (e: Exception) {
+        println("Error SSL: ${e.message}")
+        println("Asegúrate de haber generado el fichero 'servidor.jks'")
+    }
+}
+```
+
+### Creación de un Cliente SSL en Kotlin
+
+El cliente debe confiar en el certificado del servidor. Si es un certificado oficial (como el de Google), Java confía automáticamente. Si es autofirmado (como el nuestro), debemos importarlo en el TrustStore del cliente o configurarlo explícitamente.
+
+```kotlin
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.SSLSocketFactory
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+fun main() {
+    // Para pruebas con certificado autofirmado, indicamos el trustStore
+    // (En producción, usaríamos certificados válidos por una CA)
+    System.setProperty("javax.net.ssl.trustStore", "servidor.jks")
+    System.setProperty("javax.net.ssl.trustStorePassword", "123456")
+
+    try {
+        val sslFactory = SSLSocketFactory.getDefault() as SSLSocketFactory
+        val socket = sslFactory.createSocket("localhost", 8443) as SSLSocket
+        
+        // Iniciar el handshake (negociación de claves)
+        socket.startHandshake()
+
+        val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+        println("Respuesta del servidor: ${reader.readLine()}")
+        
+        socket.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+## Almacenamiento Seguro de Datos
+
+Cuando guardamos información sensible en disco (ficheros, bases de datos locales), también debemos protegerla (Data at Rest).
+
+- **Encriptación de Archivos:** Usar `CipherOutputStream` para escribir datos cifrados en disco.
+- **Android EncryptedSharedPreferences:** En Android, no usar `SharedPreferences` normales para tokens o claves. Usar la versión encriptada que utiliza el Keystore del hardware del móvil.
+
+```kotlin
+// Ejemplo de escritura cifrada en fichero (simplificado)
+
+val cipher = Cipher.getInstance("AES")
+cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+
+FileOutputStream("datos_secretos.dat").use { fos ->
+    CipherOutputStream(fos, cipher).use { cos ->
+        cos.write("Información confidencial".toByteArray())
+    }
+}
+
+```
