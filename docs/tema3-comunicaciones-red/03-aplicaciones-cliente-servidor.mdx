@@ -1,0 +1,262 @@
+---
+sidebar_position: 3
+title: Aplicaciones Cliente/Servidor con Sockets
+---
+
+# Programación de Aplicaciones Cliente/Servidor con Sockets
+
+En este apartado entraremos en la práctica desarrollando aplicaciones que se comunican a través de la red. Veremos cómo implementar tanto clientes como servidores utilizando los protocolos TCP y UDP en Kotlin.
+
+## Sockets TCP (Orientados a Conexión)
+
+El protocolo TCP es ideal cuando necesitamos una transmisión fiable de datos. La comunicación sigue un patrón estricto: el servidor espera conexiones, el cliente se conecta, y una vez establecida la conexión, ambos pueden intercambiar datos a través de flujos (streams).
+
+### El Servidor TCP
+
+Para crear un servidor TCP en Kotlin utilizamos la clase `ServerSocket`.
+
+Pasos básicos:
+1.  **Crear el ServerSocket:** Especificando el puerto donde escuchará.
+2.  **Esperar conexiones:** El método `accept()` bloquea la ejecución hasta que un cliente se conecta. Retorna un objeto `Socket` para comunicarse con ese cliente específico.
+3.  **Obtener flujos:** Usar `getInputStream()` y `getOutputStream()` del socket cliente para recibir y enviar datos.
+4.  **Cerrar:** Cerrar los flujos y el socket cuando termine la comunicación.
+
+```kotlin
+import java.net.ServerSocket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+
+fun main() {
+    val puerto = 6000
+    
+    try {
+        // 1. Crear el ServerSocket
+        val serverSocket = ServerSocket(puerto)
+        println("Servidor escuchando en el puerto $puerto...")
+
+        // 2. Esperar conexión (bloqueante)
+        val clientSocket = serverSocket.accept()
+        println("Cliente conectado desde: ${clientSocket.inetAddress.hostAddress}")
+
+        // 3. Obtener flujos de entrada y salida
+        // Para leer texto cómodamente usamos BufferedReader
+        val input = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
+        // Para escribir texto cómodamente usamos PrintWriter (autoFlush = true)
+        val output = PrintWriter(clientSocket.getOutputStream(), true)
+
+        // Leer mensaje del cliente
+        val mensajeCliente = input.readLine()
+        println("Mensaje recibido: $mensajeCliente")
+
+        // Enviar respuesta
+        output.println("Hola Cliente, he recibido tu mensaje: $mensajeCliente")
+
+        // 4. Cerrar recursos
+        clientSocket.close()
+        serverSocket.close()
+        println("Servidor cerrado.")
+
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+### El Cliente TCP
+
+El cliente utiliza la clase `Socket` para iniciar la conexión.
+
+Pasos básicos:
+1.  **Crear el Socket:** Especificando la IP del servidor y el puerto.
+2.  **Obtener flujos:** Igual que en el servidor, para enviar y recibir.
+3.  **Comunicación:** Enviar solicitud y esperar respuesta.
+4.  **Cerrar:** Cerrar el socket.
+
+```kotlin
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+
+fun main() {
+    val host = "localhost" // O la IP del servidor
+    val puerto = 6000
+
+    try {
+        println("Conectando al servidor $host:$puerto...")
+        // 1. Crear el Socket y conectar
+        val socket = Socket(host, puerto)
+
+        // 2. Obtener flujos
+        val output = PrintWriter(socket.getOutputStream(), true)
+        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+
+        // 3. Enviar mensaje
+        val mensaje = "¡Hola desde Kotlin!"
+        output.println(mensaje)
+        println("Mensaje enviado: $mensaje")
+
+        // Leer respuesta del servidor
+        val respuesta = input.readLine()
+        println("Respuesta del servidor: $respuesta")
+
+        // 4. Cerrar
+        socket.close()
+
+    } catch (e: Exception) {
+        println("Error: ${e.message}")
+    }
+}
+```
+
+## Sockets UDP (Sin Conexión)
+
+UDP funciona enviando paquetes independientes (datagramas). No hay un canal permanente ni garantía de entrega. Usamos `DatagramSocket` y `DatagramPacket`.
+
+### El Receptor UDP (Servidor)
+
+1.  **Crear DatagramSocket:** En un puerto específico.
+2.  **Preparar DatagramPacket:** Un array de bytes vacío para recibir los datos.
+3.  **Recibir:** El método `receive()` bloquea hasta que llega un paquete.
+
+```kotlin
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+
+fun main() {
+    val puerto = 6000
+    val buffer = ByteArray(1024) // Buffer para recibir datos
+
+    try {
+        // 1. Crear socket
+        val socket = DatagramSocket(puerto)
+        println("Servidor UDP esperando datagramas en el puerto $puerto...")
+
+        // 2. Preparar paquete para recibir
+        val packet = DatagramPacket(buffer, buffer.size)
+
+        // 3. Recibir (bloqueante)
+        socket.receive(packet)
+
+        // Procesar datos
+        val mensaje = String(packet.data, 0, packet.length)
+        println("Recibido de ${packet.address}:${packet.port}: $mensaje")
+
+        socket.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+### El Emisor UDP (Cliente)
+
+1.  **Crear DatagramSocket:** No hace falta especificar puerto (se asigna uno aleatorio).
+2.  **Preparar DatagramPacket:** Con los datos, la IP de destino y el puerto de destino.
+3.  **Enviar:** Usando `send()`.
+
+```kotlin
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+
+fun main() {
+    val host = "localhost"
+    val puerto = 6000
+    val mensaje = "Mensaje vía UDP"
+
+    try {
+        val socket = DatagramSocket()
+        val direccion = InetAddress.getByName(host)
+        val buffer = mensaje.toByteArray()
+
+        // Crear paquete con datos y destino
+        val packet = DatagramPacket(buffer, buffer.size, direccion, puerto)
+
+        // Enviar
+        socket.send(packet)
+        println("Paquete enviado a $host:$puerto")
+
+        socket.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+## Servidores Concurrentes (Multihilo)
+
+El servidor TCP básico que vimos antes tiene una gran limitación: es **iterativo**. Solo puede atender a un cliente a la vez. Si un segundo cliente intenta conectarse mientras el servidor procesa al primero, tendrá que esperar.
+
+Para solucionar esto, utilizamos **hilos (threads)**. El servidor principal solo se encarga de aceptar conexiones y, por cada cliente que llega, crea un nuevo hilo dedicado a atenderlo.
+
+### Estructura de un Servidor Multihilo
+
+1.  El hilo principal tiene un bucle infinito con `serverSocket.accept()`.
+2.  Cuando `accept()` retorna un `clientSocket`, se instancia un nuevo hilo (o una corrutina) pasándole este socket.
+3.  El nuevo hilo se encarga de la comunicación con ese cliente específico.
+4.  El hilo principal vuelve inmediatamente a `accept()` para esperar más clientes.
+
+```kotlin
+import java.net.ServerSocket
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import kotlin.concurrent.thread
+
+// Clase que maneja la conexión con un cliente específico
+class GestorCliente(private val socket: Socket) {
+    fun run() {
+        try {
+            val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val output = PrintWriter(socket.getOutputStream(), true)
+
+            output.println("Bienvenido al servidor multihilo. Escribe 'salir' para terminar.")
+
+            var linea: String?
+            while (input.readLine().also { linea = it } != null) {
+                println("Cliente [${socket.port}] dice: $linea")
+                
+                if ("salir" == linea) {
+                    break
+                }
+                
+                output.println("Eco: $linea")
+            }
+        } catch (e: Exception) {
+            println("Error con cliente: ${e.message}")
+        } finally {
+            try {
+                socket.close()
+                println("Cliente [${socket.port}] desconectado.")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+}
+
+fun main() {
+    val puerto = 6000
+    val serverSocket = ServerSocket(puerto)
+    println("Servidor Multihilo iniciado en puerto $puerto")
+
+    while (true) {
+        // 1. Esperar conexión
+        val clientSocket = serverSocket.accept()
+        println("Nuevo cliente conectado: ${clientSocket.inetAddress}")
+
+        // 2. Crear un hilo para atender al cliente
+        thread {
+            val gestor = GestorCliente(clientSocket)
+            gestor.run()
+        }
+    }
+}
+```
+
+:::tip Uso de Corrutinas
+En Kotlin, una alternativa más eficiente a crear un hilo por cliente (`thread { ... }`) es utilizar **corrutinas**. Las corrutinas son mucho más ligeras y permiten manejar miles de conexiones concurrentes sin agotar los recursos del sistema operativo.
+:::

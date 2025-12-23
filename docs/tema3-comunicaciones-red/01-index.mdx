@@ -25,3 +25,374 @@ En esta unidad didáctica veremos cómo las aplicaciones se comunican a través 
 3. Monitorización y Depuración de Aplicaciones en Red
     - Herramientas para monitorizar el tráfico de red y los tiempos de respuesta (Wireshark, netstat, etc.). 
     - Técnicas de depuración específicas para aplicaciones en red.
+
+4. Proyectos Propuestos
+    - Propuestas de proyectos para aplicar los conocimientos adquiridos en entornos reales y multiplataforma.
+
+## Ejercicios prácticos
+
+:::info
+Los siguientes ejercicios están diseñados para practicar la programación de sockets TCP y UDP en Kotlin. Cada uno incluye una solución oculta que puedes consultar cuando lo necesites.
+:::
+
+### Ejercicio 1: Servidor de Eco TCP (Básico)
+**Enunciado:** Crea un servidor TCP que escuche en el puerto 5000. Cuando un cliente se conecte, el servidor debe leer el texto que envíe el cliente, convertirlo a mayúsculas y enviarlo de vuelta. El cliente debe conectarse, enviar una frase y mostrar la respuesta.
+**Requisitos:**
+- Usar `ServerSocket` y `Socket`.
+- El servidor debe cerrarse después de atender a un cliente (iterativo simple).
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorEco.kt"
+import java.net.ServerSocket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+
+fun main() {
+    val serverSocket = ServerSocket(5000)
+    println("Servidor Eco esperando en puerto 5000...")
+    
+    val clientSocket = serverSocket.accept()
+    val input = BufferedReader(InputStreamReader(clientSocket.getInputStream()))
+    val output = PrintWriter(clientSocket.getOutputStream(), true)
+    
+    val mensaje = input.readLine()
+    println("Recibido: $mensaje")
+    
+    output.println(mensaje.uppercase())
+    
+    clientSocket.close()
+    serverSocket.close()
+}
+```
+
+```kotlin title="ClienteEco.kt"
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+
+fun main() {
+    val socket = Socket("localhost", 5000)
+    val output = PrintWriter(socket.getOutputStream(), true)
+    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    
+    output.println("hola mundo socket")
+    val respuesta = input.readLine()
+    println("Respuesta del servidor: $respuesta")
+    
+    socket.close()
+}
+```
+</details>
+
+### Ejercicio 2: Servidor de Hora UDP
+**Enunciado:** Implementa un servidor UDP que escuche en el puerto 5001. Cuando reciba cualquier paquete (el contenido no importa), debe responder al remitente con la fecha y hora actual.
+**Requisitos:**
+- Usar `DatagramSocket` y `DatagramPacket`.
+- El cliente debe enviar un paquete vacío para "despertar" al servidor y esperar la respuesta.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorHoraUDP.kt"
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.util.Date
+
+fun main() {
+    val socket = DatagramSocket(5001)
+    val buffer = ByteArray(1024)
+    println("Servidor UDP de Hora iniciado...")
+
+    while (true) {
+        val packet = DatagramPacket(buffer, buffer.size)
+        socket.receive(packet) // Espera petición
+        
+        val fecha = Date().toString()
+        val respuestaBytes = fecha.toByteArray()
+        
+        val respuestaPacket = DatagramPacket(
+            respuestaBytes, 
+            respuestaBytes.size, 
+            packet.address, 
+            packet.port
+        )
+        
+        socket.send(respuestaPacket)
+        println("Hora enviada a ${packet.address}:${packet.port}")
+    }
+}
+```
+
+```kotlin title="ClienteHoraUDP.kt"
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+
+fun main() {
+    val socket = DatagramSocket()
+    val direccion = InetAddress.getByName("localhost")
+    val buffer = ByteArray(0) // Paquete vacío
+    
+    // Enviar solicitud
+    val packet = DatagramPacket(buffer, buffer.size, direccion, 5001)
+    socket.send(packet)
+    
+    // Recibir respuesta
+    val bufferRx = ByteArray(1024)
+    val packetRx = DatagramPacket(bufferRx, bufferRx.size)
+    socket.receive(packetRx)
+    
+    val hora = String(packetRx.data, 0, packetRx.length)
+    println("Hora del servidor: $hora")
+    
+    socket.close()
+}
+```
+</details>
+
+### Ejercicio 3: Servidor TCP Multihilo (Adivina el número)
+**Enunciado:** Crea un servidor que genere un número aleatorio entre 1 y 100 para cada cliente que se conecte. El cliente enviará números intentando adivinarlo. El servidor responderá "Mayor", "Menor" o "Correcto". El servidor debe poder atender a múltiples clientes a la vez.
+**Requisitos:**
+- Usar hilos (`thread`) para manejar cada conexión de cliente.
+- El servidor no debe detenerse nunca.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorAdivina.kt"
+import java.net.ServerSocket
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import kotlin.concurrent.thread
+import kotlin.random.Random
+
+fun main() {
+    val serverSocket = ServerSocket(5002)
+    println("Servidor 'Adivina el número' iniciado...")
+
+    while (true) {
+        val clientSocket = serverSocket.accept()
+        thread {
+            manejarCliente(clientSocket)
+        }
+    }
+}
+
+fun manejarCliente(socket: Socket) {
+    try {
+        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+        val output = PrintWriter(socket.getOutputStream(), true)
+        
+        val numeroSecreto = Random.nextInt(1, 101)
+        println("Cliente conectado. Número secreto: $numeroSecreto")
+        
+        output.println("Adivina el número (1-100):")
+        
+        var linea: String?
+        while (input.readLine().also { linea = it } != null) {
+            val intento = linea?.toIntOrNull()
+            
+            if (intento == null) {
+                output.println("Por favor, envía un número válido.")
+                continue
+            }
+            
+            when {
+                intento < numeroSecreto -> output.println("Mayor")
+                intento > numeroSecreto -> output.println("Menor")
+                else -> {
+                    output.println("Correcto")
+                    break // Terminar conexión
+                }
+            }
+        }
+    } catch (e: Exception) {
+        println("Error: ${e.message}")
+    } finally {
+        socket.close()
+    }
+}
+```
+</details>
+
+### Ejercicio 4: Chat Grupal (Broadcast)
+**Enunciado:** Implementa un servidor de chat donde múltiples clientes puedan conectarse. Cuando un cliente envía un mensaje, el servidor debe retransmitirlo a todos los demás clientes conectados.
+**Requisitos:**
+- El servidor debe mantener una lista de los sockets de los clientes conectados.
+- Usar `synchronized` o una estructura thread-safe para gestionar la lista de clientes.
+- Cuando un cliente se desconecta, debe eliminarse de la lista.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorChat.kt"
+import java.net.ServerSocket
+import java.net.Socket
+import java.io.PrintWriter
+import java.util.Scanner
+import kotlin.concurrent.thread
+
+val clientes = ArrayList<PrintWriter>()
+
+fun main() {
+    val serverSocket = ServerSocket(5003)
+    println("Servidor de Chat iniciado en puerto 5003...")
+
+    while (true) {
+        val clientSocket = serverSocket.accept()
+        val writer = PrintWriter(clientSocket.getOutputStream(), true)
+        
+        synchronized(clientes) {
+            clientes.add(writer)
+        }
+        
+        thread {
+            try {
+                val scanner = Scanner(clientSocket.getInputStream())
+                while (scanner.hasNextLine()) {
+                    val mensaje = scanner.nextLine()
+                    println("Difundiendo: $mensaje")
+                    broadcast(mensaje)
+                }
+            } catch (e: Exception) {
+                // Cliente desconectado
+            } finally {
+                synchronized(clientes) {
+                    clientes.remove(writer)
+                }
+                clientSocket.close()
+            }
+        }
+    }
+}
+
+fun broadcast(mensaje: String) {
+    synchronized(clientes) {
+        for (writer in clientes) {
+            writer.println(mensaje)
+        }
+    }
+}
+```
+</details>
+
+### Ejercicio 5: Transferencia de Archivos (Binario)
+**Enunciado:** Crea un cliente que lea un archivo local (puedes crear un archivo de texto de prueba) y lo envíe a un servidor. El servidor debe recibir los datos y guardarlos en un nuevo archivo con el nombre "copia_recibida.txt".
+**Requisitos:**
+- Usar flujos binarios (`InputStream`/`OutputStream`), no de texto (`Reader`/`Writer`), para soportar cualquier tipo de archivo (imágenes, pdf, etc.).
+- Usar un buffer de bytes para la transferencia eficiente.
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ServidorArchivo.kt"
+import java.net.ServerSocket
+import java.io.FileOutputStream
+
+fun main() {
+    val serverSocket = ServerSocket(5004)
+    println("Esperando archivo en puerto 5004...")
+    
+    val socket = serverSocket.accept()
+    val input = socket.getInputStream()
+    val fileOutput = FileOutputStream("copia_recibida.txt")
+    
+    val buffer = ByteArray(4096)
+    var bytesRead: Int
+    
+    // Leer del socket y escribir en archivo
+    while (input.read(buffer).also { bytesRead = it } != -1) {
+        fileOutput.write(buffer, 0, bytesRead)
+    }
+    
+    println("Archivo recibido y guardado.")
+    
+    fileOutput.close()
+    socket.close()
+    serverSocket.close()
+}
+```
+
+```kotlin title="ClienteArchivo.kt"
+import java.net.Socket
+import java.io.FileInputStream
+import java.io.File
+
+fun main() {
+    val archivo = File("prueba.txt") // Asegúrate de que este archivo exista
+    if (!archivo.exists()) {
+        archivo.writeText("Hola, este es un archivo de prueba para enviar por red.")
+    }
+
+    val socket = Socket("localhost", 5004)
+    val fileInput = FileInputStream(archivo)
+    val output = socket.getOutputStream()
+    
+    val buffer = ByteArray(4096)
+    var bytesRead: Int
+    
+    println("Enviando archivo...")
+    while (fileInput.read(buffer).also { bytesRead = it } != -1) {
+        output.write(buffer, 0, bytesRead)
+    }
+    
+    println("Archivo enviado.")
+    
+    fileInput.close()
+    socket.close()
+}
+```
+</details>
+
+### Ejercicio 6: Cliente HTTP Manual
+**Enunciado:** Implementa un programa que actúe como un navegador web muy básico. Debe conectarse al servidor `example.com` en el puerto 80, enviar una petición HTTP GET manual y mostrar el código HTML que devuelve el servidor.
+**Requisitos:**
+- No usar librerías HTTP (como OkHttp o Ktor), solo `Socket`.
+- La petición debe seguir el formato del protocolo HTTP:
+  ```
+  GET / HTTP/1.1
+  Host: example.com
+  Connection: close
+  (línea vacía)
+  ```
+
+<details>
+<summary>Solución</summary>
+
+```kotlin title="ClienteHTTP.kt"
+import java.net.Socket
+import java.io.PrintWriter
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+fun main() {
+    val host = "example.com"
+    val puerto = 80
+    
+    val socket = Socket(host, puerto)
+    val output = PrintWriter(socket.getOutputStream(), true)
+    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    
+    // Enviar cabeceras HTTP
+    output.println("GET / HTTP/1.1")
+    output.println("Host: $host")
+    output.println("Connection: close")
+    output.println() // Línea vacía importante para indicar fin de cabeceras
+    
+    // Leer respuesta
+    var linea: String?
+    while (input.readLine().also { linea = it } != null) {
+        println(linea)
+    }
+    
+    socket.close()
+}
+```
+</details>
+

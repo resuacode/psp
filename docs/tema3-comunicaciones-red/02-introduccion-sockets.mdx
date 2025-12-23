@@ -1,0 +1,114 @@
+---
+sidebar_position: 2
+title: Introducción a Sockets
+---
+
+# Introducción a la Comunicación en Red y Sockets
+
+La comunicación en red es un pilar fundamental en el desarrollo de software moderno. Permite que aplicaciones ejecutándose en diferentes dispositivos (o en el mismo dispositivo) intercambien información, posibilitando desde la navegación web hasta los juegos multijugador en tiempo real.
+
+## Escenarios que precisan comunicación en red
+
+La necesidad de comunicar procesos a través de una red surge en múltiples escenarios:
+
+- **Sistemas Distribuidos:** Aplicaciones divididas en componentes que se ejecutan en diferentes máquinas para mejorar el rendimiento y la escalabilidad.
+- **Acceso a Recursos Remotos:** Aplicaciones que necesitan acceder a bases de datos, sistemas de archivos o servicios alojados en servidores remotos.
+- **Comunicación Interpersonal:** Aplicaciones de mensajería, correo electrónico, videoconferencia y redes sociales.
+- **Internet de las Cosas (IoT):** Dispositivos sensores y actuadores que envían datos a servidores centrales para su procesamiento.
+- **Juegos Multijugador:** Sincronización del estado del juego entre múltiples jugadores conectados simultáneamente.
+
+## Arquitectura Cliente-Servidor
+
+El modelo más común para la comunicación en red es la arquitectura **Cliente-Servidor**. En este modelo, los roles están claramente definidos:
+
+### El Servidor
+Es el proceso que ofrece un servicio y espera pasivamente a que lleguen peticiones.
+- **Rol Pasivo:** Inicialmente está a la escucha (*listening*) en un puerto específico.
+- **Funciones:** Procesa las peticiones de los clientes, realiza las operaciones necesarias (acceso a BD, cálculos, etc.) y envía una respuesta.
+- **Ejemplo:** Un servidor web (Apache, Nginx) esperando peticiones HTTP.
+
+### El Cliente
+Es el proceso que inicia la comunicación solicitando un servicio.
+- **Rol Activo:** Conoce la dirección IP y el puerto del servidor e inicia la conexión.
+- **Funciones:** Envía una solicitud al servidor y espera la respuesta para procesarla y presentarla al usuario.
+- **Ejemplo:** Un navegador web (Chrome, Firefox) solicitando una página web.
+
+:::info Peer-to-Peer (P2P)
+Aunque el modelo Cliente-Servidor es predominante, existe también el modelo **P2P (Peer-to-Peer)**, donde todos los nodos actúan simultáneamente como clientes y servidores, compartiendo recursos directamente entre ellos sin un servidor centralizado.
+:::
+
+## Concepto de Socket
+
+Un **Socket** (enchufe) es una abstracción software que sirve como punto final de una comunicación entre dos procesos. Permite a los programas enviar y recibir datos a través de la red como si estuvieran escribiendo o leyendo de un archivo.
+
+Para que dos procesos se comuniquen, cada uno debe tener un socket. La conexión se define por la pareja de sockets:
+- **Dirección IP:** Identifica al host (máquina) en la red.
+- **Puerto:** Identifica al proceso o aplicación específica dentro del host.
+
+### Tipos de Sockets: TCP vs UDP
+
+Los sockets se clasifican principalmente según el protocolo de transporte que utilizan:
+
+#### Sockets de Flujo (Stream Sockets) - TCP
+Utilizan el protocolo **TCP (Transmission Control Protocol)**.
+- **Orientados a conexión:** Se debe establecer una conexión antes de transmitir datos (handshake).
+- **Fiables:** Garantizan que los datos llegan sin errores y en el mismo orden en que se enviaron. Si un paquete se pierde, se retransmite.
+- **Uso:** Transferencia de archivos, correo electrónico, navegación web (HTTP), donde la integridad de los datos es crucial.
+
+#### Sockets de Datagrama (Datagram Sockets) - UDP
+Utilizan el protocolo **UDP (User Datagram Protocol)**.
+- **No orientados a conexión:** Se envían paquetes (datagramas) sin establecer una conexión previa.
+- **No fiables:** No garantizan la entrega, ni el orden, ni la integridad de los datos. Son "best-effort".
+- **Rápidos:** Al tener menos sobrecarga de control, son más rápidos y eficientes.
+- **Uso:** Streaming de video/audio, juegos online en tiempo real, DNS, donde la velocidad es prioritaria sobre la pérdida ocasional de datos.
+
+| Característica | TCP (Stream) | UDP (Datagram) |
+| :--- | :--- | :--- |
+| **Conexión** | Requiere conexión previa | Sin conexión |
+| **Fiabilidad** | Alta (garantiza entrega y orden) | Baja (puede haber pérdidas o desorden) |
+| **Velocidad** | Menor (mayor sobrecarga) | Mayor (menor sobrecarga) |
+| **Tipo de transmisión** | Flujo continuo de bytes | Paquetes independientes |
+
+## Programación en Red en Kotlin
+
+Kotlin, al ejecutarse sobre la JVM (Java Virtual Machine), utiliza las potentes librerías de red de Java (`java.net`). Esto nos permite crear aplicaciones de red robustas aprovechando la sintaxis concisa de Kotlin.
+
+### Clases principales en `java.net`
+
+1.  **`java.net.Socket`**: Representa un socket cliente TCP. Se utiliza para conectarse a un servidor y enviar/recibir datos.
+2.  **`java.net.ServerSocket`**: Representa un socket servidor TCP. Se utiliza para esperar conexiones entrantes de clientes.
+3.  **`java.net.DatagramSocket`**: Se utiliza para comunicaciones UDP (tanto para enviar como para recibir datagramas).
+4.  **`java.net.DatagramPacket`**: Representa el paquete de datos que se envía o recibe a través de un socket UDP.
+5.  **`java.net.InetAddress`**: Representa una dirección IP (ya sea IPv4 o IPv6).
+
+### Ejemplo conceptual en Kotlin
+
+Aunque profundizaremos en el código en las siguientes secciones, aquí tenéis un ejemplo de cómo se instancia un socket cliente en Kotlin:
+
+```kotlin
+import java.net.Socket
+import java.io.PrintWriter
+import java.util.Scanner
+
+fun main() {
+    // Intentar conectar al servidor en localhost, puerto 1234
+    try {
+        val socket = Socket("localhost", 1234)
+        println("Conectado al servidor!")
+        
+        // Obtener flujos de entrada y salida
+        val output = PrintWriter(socket.getOutputStream(), true)
+        val input = Scanner(socket.getInputStream())
+        
+        // Enviar mensaje
+        output.println("Hola Servidor")
+        
+        // Cerrar conexión
+        socket.close()
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+}
+```
+
+En los próximos apartados veremos cómo implementar servidores y clientes completos, manejar múltiples conexiones y utilizar hilos para la concurrencia.

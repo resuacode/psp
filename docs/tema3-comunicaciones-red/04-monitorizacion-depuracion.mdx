@@ -1,0 +1,106 @@
+---
+sidebar_position: 4
+title: Monitorización y Depuración
+---
+
+# Monitorización y Depuración de Aplicaciones en Red
+
+El desarrollo de aplicaciones en red introduce una capa de complejidad adicional respecto a las aplicaciones locales: la red es un medio no fiable, compartido y asíncrono. Los errores pueden deberse no solo a fallos en nuestro código, sino a cortafuegos, problemas de enrutamiento, puertos cerrados o latencia excesiva.
+
+Para diagnosticar estos problemas, necesitamos herramientas que nos permitan "ver" qué está ocurriendo en la red.
+
+## Herramientas de Monitorización y Diagnóstico
+
+### 1. Verificación de Puertos y Conexiones (`netstat` / `ss`)
+
+Antes de culpar al código, debemos asegurarnos de que nuestro servidor está realmente escuchando en el puerto esperado y que el cliente está estableciendo la conexión.
+
+- **`netstat`**: Es la herramienta clásica (aunque obsoleta en algunas distros Linux modernas) para ver estadísticas de red.
+    - `netstat -an`: Muestra todas las conexiones y puertos de escucha.
+    - `netstat -an | grep 6000`: Filtra para ver si hay algo en el puerto 6000.
+
+- **`ss` (Socket Statistics)**: Es el reemplazo moderno y más rápido de netstat en Linux.
+    - `ss -lntu`: Muestra puertos **l**istening (escuchando), **n**uméricos (sin resolver DNS), **t**cp y **u**dp.
+    
+    ```bash
+    # Ejemplo de salida donde vemos nuestro servidor escuchando en el puerto 6000
+    State      Recv-Q Send-Q Local Address:Port               Peer Address:Port
+    LISTEN     0      50           *:6000                     *:*
+    ```
+
+### 2. Pruebas de Conectividad Básica (`ping`)
+
+`ping` utiliza el protocolo ICMP para verificar si un host remoto es accesible y medir el tiempo de ida y vuelta (RTT).
+- Útil para descartar problemas físicos o de enrutamiento básicos.
+- **Nota:** Muchos servidores bloquean el tráfico ICMP por seguridad, por lo que un ping fallido no siempre significa que el servidor esté caído.
+
+### 3. Simulación de Clientes (`telnet` / `nc`)
+
+A veces queremos probar si nuestro servidor responde correctamente sin necesidad de escribir un cliente completo.
+
+- **`telnet`**: Permite conectarse a un puerto TCP y enviar texto plano.
+    ```bash
+    telnet localhost 6000
+    # Una vez conectado, lo que escribas se enviará al servidor
+    ```
+
+- **`nc` (netcat)**: Conocida como la "navaja suiza" de TCP/IP. Sirve tanto para escuchar como para conectarse.
+    - Como cliente: `nc localhost 6000`
+    - Como servidor simple (para probar tu cliente): `nc -l 6000` (escucha en el 6000 y muestra lo que recibe).
+
+### 4. Análisis de Paquetes (Wireshark)
+
+Cuando necesitamos ver exactamente qué bytes se están enviando por el cable, **Wireshark** es la herramienta estándar.
+- Captura el tráfico de la interfaz de red en tiempo real.
+- Permite filtrar por protocolo (ej. `tcp.port == 6000`).
+- Es fundamental para entender el "handshake" de TCP, ver si los paquetes se fragmentan, o inspeccionar el contenido de los mensajes si no están cifrados.
+
+## Técnicas de Depuración en Código
+
+Más allá de las herramientas externas, debemos programar nuestras aplicaciones pensando en la depuración.
+
+### 1. Logging Exhaustivo
+
+En sistemas distribuidos, no siempre podemos usar un depurador paso a paso (debugger) fácilmente, especialmente si el error ocurre por condiciones de carrera o tiempos de espera.
+- Registra **cuándo** se inicia el servidor.
+- Registra la **IP y puerto** de cada cliente que se conecta.
+- Registra los **errores y excepciones** con su traza completa.
+- Usa niveles de log (INFO, DEBUG, ERROR) para poder filtrar la información.
+
+```kotlin
+try {
+    // ... código de red ...
+} catch (e: SocketTimeoutException) {
+    System.err.println("[TIMEOUT] El cliente tardó demasiado en responder.")
+} catch (e: IOException) {
+    System.err.println("[IO-ERROR] Error en la comunicación: ${e.message}")
+}
+```
+
+### 2. Gestión de Timeouts (Tiempos de Espera)
+
+Un error común es que una lectura (`read()`) se quede bloqueada indefinidamente porque el otro extremo no envía nada (quizás se colgó o se cortó el cable sin cerrar la conexión TCP limpiamente).
+- Configura siempre un **SoTimeout**: `socket.soTimeout = 5000` (5 segundos). Si no llegan datos en ese tiempo, se lanza una `SocketTimeoutException`, permitiendo a tu programa recuperar el control en lugar de congelarse.
+
+### 3. Pruebas en Entornos Reales
+
+Probar en `localhost` es engañoso:
+- La latencia es casi cero.
+- No hay pérdida de paquetes.
+- El ancho de banda es infinito.
+
+Para probar la robustez:
+- Ejecuta el cliente y el servidor en máquinas diferentes (o máquinas virtuales).
+- Usa herramientas para simular malas condiciones de red (en Linux, `tc` - traffic control - permite añadir retardo o pérdida de paquetes artificialmente a una interfaz).
+
+### 4. Cierre Limpio de Recursos
+
+Asegúrate de cerrar siempre los sockets en un bloque `finally` o usando `use` (try-with-resources en Java/Kotlin) para evitar dejar puertos "colgados" (en estado TIME_WAIT) que impidan reiniciar el servidor inmediatamente.
+
+```kotlin
+// El método .use cierra automáticamente el socket al terminar el bloque
+ServerSocket(6000).use { server ->
+    println("Servidor iniciado...")
+    // ...
+}
+```
