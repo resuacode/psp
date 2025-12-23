@@ -73,13 +73,87 @@ Utilizan el protocolo **UDP (User Datagram Protocol)**.
 
 Kotlin, al ejecutarse sobre la JVM (Java Virtual Machine), utiliza las potentes librerías de red de Java (`java.net`). Esto nos permite crear aplicaciones de red robustas aprovechando la sintaxis concisa de Kotlin.
 
-### Clases principales en `java.net`
+### Clases y Métodos Principales en `java.net`
 
-1.  **`java.net.Socket`**: Representa un socket cliente TCP. Se utiliza para conectarse a un servidor y enviar/recibir datos.
-2.  **`java.net.ServerSocket`**: Representa un socket servidor TCP. Se utiliza para esperar conexiones entrantes de clientes.
-3.  **`java.net.DatagramSocket`**: Se utiliza para comunicaciones UDP (tanto para enviar como para recibir datagramas).
-4.  **`java.net.DatagramPacket`**: Representa el paquete de datos que se envía o recibe a través de un socket UDP.
-5.  **`java.net.InetAddress`**: Representa una dirección IP (ya sea IPv4 o IPv6).
+A continuación, detallamos las clases fundamentales que utilizaremos, sus métodos más importantes y ejemplos de uso.
+
+#### 1. `java.net.InetAddress`
+Representa una dirección IP (IPv4 o IPv6). No tiene constructores públicos; se usan métodos estáticos para obtener instancias.
+
+*   **Métodos clave:**
+    *   `getByName(host: String)`: Obtiene la IP a partir de un nombre de host (ej. "google.com") o string de IP.
+    *   `getLocalHost()`: Devuelve la IP de la máquina local.
+    *   `hostAddress`: Propiedad que devuelve la IP en formato String (ej. "192.168.1.5").
+    *   `isReachable(timeout: Int)`: Comprueba si la dirección es accesible (similar a un ping).
+
+```kotlin
+val google = InetAddress.getByName("google.com")
+println("IP de Google: ${google.hostAddress}")
+
+val local = InetAddress.getLocalHost()
+println("Mi IP: ${local.hostAddress}")
+```
+
+#### 2. `java.net.Socket` (Cliente TCP)
+Implementa el lado del cliente en una conexión TCP.
+
+*   **Constructor:** `Socket(host: String, port: Int)` intenta conectar inmediatamente.
+*   **Métodos clave:**
+    *   `getInputStream()`: Devuelve un `InputStream` para leer datos del servidor.
+    *   `getOutputStream()`: Devuelve un `OutputStream` para enviar datos al servidor.
+    *   `close()`: Cierra la conexión.
+    *   `isConnected`: Verifica si la conexión está establecida.
+
+```kotlin
+val socket = Socket("localhost", 5000)
+// Escribir datos
+socket.getOutputStream().write("Hola".toByteArray())
+```
+
+#### 3. `java.net.ServerSocket` (Servidor TCP)
+Escucha peticiones de conexión entrantes y crea un `Socket` para comunicarse con cada cliente.
+
+*   **Constructor:** `ServerSocket(port: Int)` inicia la escucha en el puerto indicado.
+*   **Métodos clave:**
+    *   `accept()`: **Bloquea** la ejecución hasta que llega un cliente. Devuelve un objeto `Socket` nuevo conectado a ese cliente.
+    *   `close()`: Deja de escuchar en el puerto.
+
+```kotlin
+val server = ServerSocket(5000)
+println("Esperando clientes...")
+val clientSocket = server.accept() // Se detiene aquí hasta que alguien conecta
+println("Cliente conectado desde ${clientSocket.inetAddress}")
+```
+
+#### 4. `java.net.DatagramSocket` (UDP)
+Se usa tanto para enviar como para recibir paquetes UDP. No mantiene una conexión persistente.
+
+*   **Constructores:**
+    *   `DatagramSocket()`: Para un cliente (asigna un puerto aleatorio disponible).
+    *   `DatagramSocket(port: Int)`: Para un servidor (escucha en un puerto fijo).
+*   **Métodos clave:**
+    *   `send(packet: DatagramPacket)`: Envía un paquete.
+    *   `receive(packet: DatagramPacket)`: Bloquea hasta recibir un paquete y llena el buffer del argumento.
+    *   `soTimeout`: Establece un tiempo máximo de espera para el `receive`.
+
+#### 5. `java.net.DatagramPacket` (Paquete UDP)
+Contenedor de datos para UDP. Contiene los datos (bytes), la longitud, y (para enviar) la dirección IP y puerto de destino.
+
+*   **Constructores:**
+    *   Para recibir: `DatagramPacket(buffer: ByteArray, length: Int)`
+    *   Para enviar: `DatagramPacket(data: ByteArray, length: Int, address: InetAddress, port: Int)`
+*   **Propiedades:** `data`, `length`, `address`, `port`.
+
+```kotlin
+// Preparar datos para enviar
+val mensaje = "Hola UDP".toByteArray()
+val destino = InetAddress.getByName("localhost")
+val paqueteEnvio = DatagramPacket(mensaje, mensaje.size, destino, 5000)
+
+// Preparar contenedor para recibir
+val buffer = ByteArray(1024)
+val paqueteRecepcion = DatagramPacket(buffer, buffer.size)
+```
 
 ### Ejemplo conceptual en Kotlin
 

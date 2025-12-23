@@ -257,6 +257,67 @@ fun main() {
 }
 ```
 
-:::tip Uso de Corrutinas
-En Kotlin, una alternativa más eficiente a crear un hilo por cliente (`thread { ... }`) es utilizar **corrutinas**. Las corrutinas son mucho más ligeras y permiten manejar miles de conexiones concurrentes sin agotar los recursos del sistema operativo.
+### Servidores Concurrentes con Corrutinas
+
+Aunque el uso de `thread` funciona, crear un hilo del sistema operativo para cada cliente es costoso en términos de memoria y tiempo de CPU. Si tuviéramos 10,000 clientes simultáneos, el servidor probablemente colapsaría.
+
+Kotlin ofrece una solución mucho más eficiente: las **Corrutinas**. Una corrutina es como un "hilo ligero". Podemos tener cientos de miles de corrutinas ejecutándose sobre un número muy pequeño de hilos reales.
+
+Para usar corrutinas en un servidor, simplemente envolvemos la lógica de atención al cliente en un bloque `launch` dentro de un `runBlocking` (o un `CoroutineScope` adecuado). Además, debemos usar `Dispatchers.IO`, que está optimizado para operaciones de entrada/salida como la red.
+
+```kotlin
+import java.net.ServerSocket
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import kotlinx.coroutines.* // Requiere añadir la librería kotlinx-coroutines-core
+
+fun main() = runBlocking {
+    val puerto = 6000
+    val serverSocket = ServerSocket(puerto)
+    println("Servidor con Corrutinas iniciado en puerto $puerto")
+
+    // Usamos Dispatchers.IO para operaciones de red
+    withContext(Dispatchers.IO) {
+        while (true) {
+            // accept() sigue siendo bloqueante, pero está en un hilo IO
+            val clientSocket = serverSocket.accept()
+            println("Nuevo cliente conectado: ${clientSocket.inetAddress}")
+
+            // Lanzamos una corrutina para cada cliente
+            // Esto es CASI GRATIS en términos de recursos
+            launch {
+                manejarClienteCorrutina(clientSocket)
+            }
+        }
+    }
+}
+
+// Esta función se ejecuta dentro de una corrutina
+suspend fun manejarClienteCorrutina(socket: Socket) = withContext(Dispatchers.IO) {
+    try {
+        val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+        val output = PrintWriter(socket.getOutputStream(), true)
+
+        output.println("Hola desde una Corrutina!")
+
+        var linea: String?
+        // Nota: readLine() es bloqueante. En un entorno 100% corrutinas (como Ktor)
+        // usaríamos funciones 'suspend' para leer, pero aquí usamos la API clásica de Java
+        // dentro de Dispatchers.IO, lo cual es aceptable.
+        while (input.readLine().also { linea = it } != null) {
+            println("Cliente dice: $linea")
+            output.println("Eco: $linea")
+        }
+    } catch (e: Exception) {
+        println("Error: ${e.message}")
+    } finally {
+        socket.close()
+    }
+}
+```
+
+:::tip Nota sobre Bloqueo
+En el ejemplo anterior, aunque usamos corrutinas, las llamadas a `input.readLine()` siguen siendo bloqueantes porque `java.net.Socket` es una API bloqueante. Sin embargo, al ejecutarlo en `Dispatchers.IO`, el hilo que se bloquea es uno del pool de IO, no el hilo principal. Para una solución totalmente no bloqueante, se deberían usar librerías como **Ktor** o **Java NIO**, pero para aprender los conceptos básicos, envolver sockets clásicos en corrutinas es un excelente primer paso.
 :::
