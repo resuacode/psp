@@ -1,0 +1,505 @@
+---
+sidebar_position: 5
+title: Proyectos - Comunicaciones en Red
+---
+
+# Proyectos: Juegos Multijugador en Red con Kotlin
+
+Estos proyectos tienen como objetivo consolidar los conocimientos sobre la comunicación en red utilizando Sockets TCP en Kotlin. Cada proyecto consiste en un juego con servidor central que gestiona múltiples clientes simultáneamente, con opciones de juego PVE (Player vs Environment/IA) y PVP (Player vs Player).
+
+:::info Nota importante
+Se proponen 5 proyectos de juegos. Todos deben desarrollarse como aplicaciones **Kotlin Multiplatform (KMP)** con soporte para **Escritorio (Windows)**. Cada proyecto incluye un servidor que gestiona las partidas y almacena estadísticas.
+:::
+
+:::tip Requisitos Comunes para Todos los Proyectos
+Todos los proyectos deben cumplir con los siguientes requisitos técnicos:
+
+### Configuración del Servidor
+- **Archivo de Configuración (`server.properties`)**: El servidor debe leer la configuración de red desde un archivo que contenga:
+  ```properties
+  server.host=localhost
+  server.port=5678
+  max.clients=10
+  ```
+
+### Sistema de Records
+- **Almacenamiento de Records (`records.json`)**: El servidor debe mantener un archivo con las mejores puntuaciones y estadísticas:
+  - Mejores puntuaciones por jugador
+  - Partidas ganadas/perdidas
+  - Rachas de victorias
+  - Estadísticas específicas de cada juego
+- **Sincronización de Records**: Al conectarse, los clientes deben descargar el archivo de records del servidor para mostrarlos en el menú principal
+
+### Menú Principal del Cliente
+Todos los clientes deben incluir un menú con las siguientes opciones:
+1. **Nueva Partida PVP** (contra otro jugador)
+2. **Nueva Partida PVE** (contra la IA del servidor)
+3. **Ver Records** (mostrar estadísticas descargadas del servidor)
+4. **Configuración** (número de rondas, dificultad, etc.)
+5. **Salir**
+
+### Comunicación Cliente-Servidor
+- Uso de **Sockets TCP** para garantizar que todos los mensajes lleguen en orden
+- Protocolo de comunicación basado en JSON usando `kotlinx.serialization`
+- El servidor valida toda la lógica del juego para evitar trampas
+- Manejo de múltiples clientes concurrentes usando corrutinas
+
+### Interfaz Gráfica (Compose Multiplatform)
+- Uso de Compose for Desktop para crear interfaces gráficas modernas
+- Interfaz responsive adaptada para Windows Desktop
+- Feedback visual claro de las acciones del jugador y del oponente
+:::
+
+---
+
+## Proyecto 1: Hundir la Flota (Batalla Naval) 🚢
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows)
+
+### Descripción
+
+Desarrolla el clásico juego de "Hundir la Flota" para jugar online contra otro oponente (PVP) o contra la IA del servidor (PVE). Los jugadores colocan sus barcos en una cuadrícula y por turnos intentan hundir la flota enemiga. La lógica del juego se valida en el servidor para evitar trampas.
+
+### Funcionalidades Específicas
+
+#### Configuración del Juego
+- **Tamaño del tablero**: 10x10 (configurable)
+- **Flota disponible**:
+  - 1 Portaaviones (5 casillas)
+  - 2 Acorazados (4 casillas)
+  - 3 Cruceros (3 casillas)
+  - 4 Destructores (2 casillas)
+- **Número de rondas**: Configurable (mejor de 1, 3 o 5 partidas)
+- **Tiempo por turno**: 60 segundos (configurable)
+
+#### Comunicación y Red
+1. **Lobby**: Los jugadores pueden crear o unirse a salas de espera. En PVE, la partida comienza inmediatamente.
+2. **Protocolo de Juego** (ejemplos):
+   - `PLACE_SHIP:{"ship":"CARRIER","positions":["A1","A2","A3","A4","A5"]}`
+   - `ATTACK:{"position":"C4"}`
+   - `ATTACK_RESULT:{"position":"C4","result":"HIT","sunk":false}`
+   - `ATTACK_RESULT:{"position":"E5","result":"MISS"}`
+   - `GAME_OVER:{"winner":"Player1","reason":"ALL_SHIPS_SUNK"}`
+3. **Sistema de turnos**: El servidor gestiona de quién es el turno y notifica a ambos clientes.
+
+#### Interfaz Gráfica
+- **Fase de Colocación**: Tablero interactivo donde el jugador coloca sus barcos (arrastrar y rotar)
+- **Fase de Combate**: Dos tableros lado a lado
+  - **Mi Flota**: Muestra tus barcos y los impactos recibidos
+  - **Radar Enemigo**: Cuadrícula donde realizas tus ataques (muestra impactos y agua)
+- **Indicadores**: 
+  - Barcos restantes de cada jugador
+  - Turno actual
+  - Tiempo restante para el movimiento
+- **Historial de movimientos**: Lista de los últimos ataques realizados
+
+#### Records y Estadísticas
+- Partidas ganadas/perdidas (PVP y PVE por separado)
+- Racha de victorias más larga
+- Mejor precisión de disparos (impactos/disparos totales)
+- Partidas más rápidas (menor número de turnos para ganar)
+
+---
+
+## Proyecto 2: Wordle Multijugador 🔤
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows)
+
+### Descripción
+
+Adaptación del popular juego Wordle a modo multijugador. Los jugadores compiten para adivinar una palabra de 5 letras en el menor número de intentos. En modo PVP, gana quien adivine primero o con menos intentos. En modo PVE, se juega contra el récord del tiempo del servidor.
+
+### Funcionalidades Específicas
+
+#### Configuración del Juego
+- **Longitud de palabra**: 5 letras (opcionalmente 4, 6 o 7)
+- **Número de intentos**: 6 intentos máximo (configurable)
+- **Número de rondas**: Configurable (mejor de 3, 5 o 7 palabras)
+- **Diccionario**: El servidor mantiene una lista de palabras válidas
+- **Dificultad PVE**: Fácil (palabras comunes), Media, Difícil (palabras raras)
+- **Tiempo por palabra**: 3 minutos máximo (opcional)
+
+#### Comunicación y Red
+1. **Inicio de Partida**: 
+   - `START_GAME:{"mode":"PVP","rounds":5,"wordLength":5}`
+   - El servidor selecciona la palabra a adivinar
+2. **Protocolo de Juego**:
+   - `GUESS:{"word":"PERRO","attempt":1}`
+   - `GUESS_RESULT:{"word":"PERRO","result":[{"letter":"P","status":"CORRECT"},{"letter":"E","status":"PRESENT"},{"letter":"R","status":"ABSENT"}...]}`
+   - Estados: `CORRECT` (letra correcta en posición correcta), `PRESENT` (letra existe pero en otra posición), `ABSENT` (letra no existe)
+   - `ROUND_WINNER:{"player":"Player1","attempts":4,"word":"PERRO"}`
+3. **Validación**: El servidor valida que las palabras existan en el diccionario
+
+#### Interfaz Gráfica
+- **Cuadrícula de intentos**: 6 filas x 5 columnas mostrando cada intento con colores:
+  - Verde: letra correcta en posición correcta
+  - Amarillo: letra existe en la palabra pero en otra posición
+  - Gris: letra no existe en la palabra
+- **Teclado virtual**: Teclado QWERTY que muestra el estado de cada letra ya probada
+- **Panel de estado**:
+  - Intentos restantes
+  - Tiempo transcurrido
+  - En PVP: progreso del oponente (número de intentos realizados)
+- **Contador de rondas**: Muestra las rondas ganadas por cada jugador
+
+#### Records y Estadísticas
+- Partidas ganadas/perdidas
+- Distribución de intentos (en cuántos intentos sueles acertar)
+- Racha de victorias actual y máxima
+- Tiempo promedio por palabra
+- Porcentaje de palabras adivinadas
+
+---
+
+## Proyecto 3: Tres en Raya (Tic-Tac-Toe) ❌⭕
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows)
+
+### Descripción
+
+Implementación del clásico juego de Tres en Raya con múltiples variantes y niveles de dificultad en la IA. Los jugadores compiten en modo PVP o PVE para conseguir alinear 3 símbolos en un tablero.
+
+### Funcionalidades Específicas
+
+#### Configuración del Juego
+- **Tamaño del tablero**: 3x3 (clásico), 4x4, 5x5
+  - En 4x4: gana quien alinee 4
+  - En 5x5: gana quien alinee 5
+- **Número de partidas**: Mejor de 3, 5 o de 7
+- **Dificultad IA (PVE)**: 
+  - Fácil: movimientos aleatorios
+  - Medio: minimax con profundidad limitada
+  - Difícil: minimax completo (invencible en 3x3)
+- **Tiempo por movimiento**: 30 segundos (configurable)
+- **Modo Turbo**: Partidas rápidas con tiempo limitado (10 segundos por turno)
+
+#### Comunicación y Red
+1. **Configuración de Partida**:
+   - `CREATE_GAME:{"boardSize":3,"rounds":5,"difficulty":"HARD","timeLimit":30}`
+2. **Protocolo de Juego**:
+   - `MAKE_MOVE:{"position":{"row":1,"col":2}}`
+   - `MOVE_RESULT:{"player":"X","position":{"row":1,"col":2},"valid":true}`
+   - `GAME_STATE:{"board":[["X","O",""],["","X",""],["","","O"]],"nextPlayer":"X"}`
+   - `ROUND_END:{"winner":"X","winningLine":[{"row":0,"col":0},{"row":1,"col":1},{"row":2,"col":2}]}`
+   - `MATCH_END:{"winner":"Player1","score":{"player1":3,"player2":1}}`
+
+#### Interfaz Gráfica
+- **Tablero interactivo**: Cuadrícula de NxN donde hacer clic coloca tu símbolo
+- **Animaciones**:
+  - Aparición de símbolos (X y O)
+  - Línea animada cuando hay victoria
+  - Tablero que se sacude en caso de empate
+- **Marcador de partidas**: Muestra el resultado de cada ronda
+- **Indicador de turno**: Claramente visible de quién es el turno
+- **Historial de movimientos**: Lista de movimientos realizados con opción de deshacer (solo en modo práctica)
+- **Timer**: Cuenta regresiva del tiempo restante para el movimiento
+
+#### Records y Estadísticas
+- Partidas ganadas/perdidas/empates (PVP y PVE separados)
+- Victorias por tamaño de tablero
+- Récord de victorias consecutivas
+- Tiempo promedio por movimiento
+- Porcentaje de victorias contra cada nivel de IA
+- Movimiento favorito (posición más jugada)
+
+---
+
+## Proyecto 4: Blackjack Multijugador 🃏
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows)
+
+### Descripción
+
+Implementación del popular juego de cartas Blackjack (21). Múltiples jugadores pueden jugar simultáneamente contra la banca (servidor). En modo PVP, los jugadores compiten entre sí para ver quién obtiene mejor mano. En modo PVE, el jugador juega individualmente contra la banca.
+
+### Funcionalidades Específicas
+
+#### Configuración del Juego
+- **Número de mazos**: 1, 2 o 4 mazos (configurable)
+- **Apuesta inicial**: Sistema de fichas virtuales (cada jugador comienza con 1000 fichas)
+- **Número de rondas**: Hasta agotar fichas o número fijo de manos
+- **Reglas configurables**:
+  - Blackjack paga 3:2 o 6:5
+  - Banca se planta en 17 blando o 17 duro
+  - Permitir doblar después de dividir
+  - Permitir rendición (surrender)
+  - Número máximo de divisiones (splits)
+
+#### Comunicación y Red
+1. **Inicio de Partida**:
+   - `JOIN_TABLE:{"playerName":"Player1","buyIn":1000}`
+   - `TABLE_STATE:{"players":[...],"dealer":"Dealer","minBet":10,"maxBet":500}`
+2. **Protocolo de Juego**:
+   - `PLACE_BET:{"amount":50}`
+   - `DEAL:{"playerHand":[{"rank":"K","suit":"HEARTS"},{"rank":"7","suit":"DIAMONDS"}],"dealerUpCard":{"rank":"A","suit":"SPADES"}}`
+   - `HIT:{}` - Pedir carta
+   - `STAND:{}` - Plantarse
+   - `DOUBLE:{}` - Doblar apuesta
+   - `SPLIT:{}` - Dividir pareja
+   - `SURRENDER:{}` - Rendirse
+   - `CARD_DEALT:{"card":{"rank":"Q","suit":"CLUBS"},"handValue":17}`
+   - `HAND_RESULT:{"result":"WIN","payout":100,"finalHand":[...],"dealerHand":[...]}`
+   - Resultados: `WIN`, `LOSE`, `PUSH` (empate), `BLACKJACK`
+
+#### Interfaz Gráfica
+- **Mesa de Blackjack**: Vista que simula una mesa de casino
+  - Zona del dealer en la parte superior
+  - Zona del jugador en la parte inferior
+  - Hasta 5 posiciones de jugadores en modo multijugador
+- **Cartas visuales**: Imágenes o representaciones gráficas de las cartas
+- **Botones de acción**: Hit, Stand, Double, Split, Surrender (habilitados según reglas)
+- **Contador de fichas**: Muestra las fichas disponibles y la apuesta actual
+- **Estadísticas en vivo**:
+  - Valor de la mano actual
+  - Conteo básico (opcional, para práctica)
+  - Probabilidades de pasarse
+- **Historial de manos**: Últimas 10 manos jugadas con resultados
+
+#### Records y Estadísticas
+- Fichas máximas alcanzadas
+- Racha de victorias más larga
+- Número de Blackjacks naturales obtenidos
+- Porcentaje de victorias
+- Ganancia/pérdida total (en fichas)
+- Mejor mano (ej: 5 cartas sin pasarse)
+- Estadísticas por decisión (% de veces que Hit, Stand, Double, etc.)
+
+---
+
+## Proyecto 5: Trivial Multijugador 🎯
+
+**Plataformas:** Kotlin Multiplatform (Escritorio Windows)
+
+### Descripción
+
+Juego de preguntas y respuestas tipo trivial. Los jugadores compiten respondiendo preguntas de diferentes categorías. En modo PVP, gana quien responda más preguntas correctamente. En modo PVE, el jugador intenta superar su mejor puntuación.
+
+### Funcionalidades Específicas
+
+#### Configuración del Juego
+- **Número de preguntas**: Configurable (3, 5, 10, 20 preguntas)
+- **Categorías disponibles**:
+  - Historia
+  - Ciencia y Naturaleza
+  - Deportes
+  - Geografía
+  - Arte y Literatura
+  - Entretenimiento (Cine, Música, TV)
+  - Tecnología
+  - Conocimiento General
+- **Dificultad**: Fácil, Media, Difícil, Mixta
+- **Modo de juego**:
+  - **Por Turnos**: Los jugadores responden alternadamente
+  - **Simultáneo**: Todos ven la misma pregunta y el primero en responder gana puntos
+  - **Contrarreloj**: Cada pregunta tiene tiempo límite (10, 15 o 30 segundos)
+- **Sistema de puntuación**:
+  - Respuesta correcta: +10 puntos (x1.5 si es difícil, x2 si es muy difícil)
+  - Respuesta incorrecta: 0 puntos
+  - Bonus por velocidad: +5 puntos si respondes en menos de 5 segundos
+  - Racha: Multiplicador x2 a partir de 5 respuestas correctas seguidas
+
+#### Comunicación y Red
+1. **Configuración de Partida**:
+   - `CREATE_TRIVIA:{"mode":"PVP","questions":30,"categories":["SCIENCE","HISTORY"],"difficulty":"MIXED","timeLimit":15}`
+2. **Protocolo de Juego**:
+   - `QUESTION:{"id":1,"category":"SCIENCE","difficulty":"MEDIUM","question":"¿Cuál es el planeta más grande del sistema solar?","options":["Júpiter","Saturno","Neptuno","Urano"],"timeLimit":15}`
+   - `ANSWER:{"questionId":1,"selectedOption":0,"timeElapsed":8}`
+   - `ANSWER_RESULT:{"questionId":1,"correct":true,"correctAnswer":0,"points":15,"explanation":"Júpiter es el planeta más grande con un diámetro de 139,820 km"}`
+   - `SCORE_UPDATE:{"players":[{"name":"Player1","score":85,"streak":5},{"name":"Player2","score":70,"streak":0}]}`
+   - `GAME_END:{"winner":"Player1","finalScores":[...],"correctAnswers":{"Player1":17,"Player2":14}}`
+
+#### Interfaz Gráfica
+- **Pantalla de pregunta**:
+  - Número de pregunta actual
+  - Categoría e icono
+  - Pregunta claramente visible
+  - 4 opciones de respuesta (botones grandes)
+  - Barra de progreso del tiempo restante
+- **Feedback inmediato**:
+  - Color verde si la respuesta es correcta
+  - Color rojo si es incorrecta, con la respuesta correcta destacada
+  - Explicación breve de la respuesta
+- **Panel de puntuación**:
+  - Puntos de cada jugador
+  - Racha actual
+  - Preguntas respondidas correctamente
+- **Indicadores visuales**:
+  - Animación de racha cuando alcanzas 5+ correctas
+  - Efectos de sonido para respuestas correctas/incorrectas
+- **Progreso**: Barra que muestra cuántas preguntas quedan
+
+#### Base de Datos de Preguntas
+El servidor debe mantener un archivo JSON con la base de preguntas:
+```json
+{
+  "questions": [
+    {
+      "id": 1,
+      "category": "SCIENCE",
+      "difficulty": "EASY",
+      "question": "¿Cuántos planetas hay en el sistema solar?",
+      "options": ["7", "8", "9", "10"],
+      "correctAnswer": 1,
+      "explanation": "Desde 2006, el sistema solar tiene 8 planetas tras la reclasificación de Plutón."
+    }
+  ]
+}
+```
+
+#### Records y Estadísticas
+- Puntuación máxima alcanzada
+- Racha más larga de respuestas correctas
+- Porcentaje de aciertos por categoría
+- Porcentaje de aciertos por dificultad
+- Tiempo promedio de respuesta
+- Preguntas respondidas correctamente en total
+- Categoría favorita (mejor % de aciertos)
+- Ranking de mejores jugadores del servidor
+
+---
+
+:::tip Banco de preguntas
+Es posible sacar las preguntas de APIs públicas como [Open Trivia DB](https://opentdb.com/) o crear un archivo JSON propio con al menos 100 preguntas variadas.
+:::
+
+## Requisitos Técnicos Generales para Todos los Proyectos
+
+### Arquitectura del Servidor
+
+```kotlin
+// Ejemplo de estructura del servidor
+class GameServer(configFile: String) {
+    private val config = loadConfig(configFile) // Lee server.properties
+    private val records = RecordsManager("records.json")
+    private val clients = mutableListOf<ClientHandler>()
+    
+    fun start() {
+        val serverSocket = ServerSocket(config.port, 50, InetAddress.getByName(config.host))
+        // Aceptar clientes y gestionar concurrencia con corrutinas
+    }
+    
+    suspend fun handleClient(socket: Socket) {
+        // Gestión de cada cliente
+    }
+}
+```
+
+### Gestión de Records
+
+Cada servidor debe implementar:
+- Lectura/escritura de records en formato JSON
+- Actualización de records al finalizar partidas
+- Envío de records a clientes cuando se conectan
+- Persistencia ante caídas del servidor
+
+### Cliente KMP
+
+```kotlin
+// Código compartido entre plataformas
+expect class NetworkClient {
+    suspend fun connect(host: String, port: Int)
+    suspend fun send(message: String)
+    suspend fun receive(): String
+}
+
+// Lógica de negocio compartida
+class GameClient(private val network: NetworkClient) {
+    suspend fun downloadRecords(): Records {
+        // Descargar records del servidor
+    }
+    
+    suspend fun startGame(mode: GameMode) {
+        // Iniciar partida
+    }
+}
+```
+
+### Interfaz de Usuario
+
+- Usar **Compose Multiplatform** para compartir código de UI
+- Implementar navegación entre pantallas (menú, juego, records, configuración)
+- Manejar estados de carga, error y éxito
+- Adaptar layouts para diferentes tamaños de pantalla
+
+### Manejo de Errores y Desconexiones
+
+- Reconexión automática en caso de pérdida de red
+- Timeout en operaciones de red
+- Guardado de estado de la partida en curso
+- Mensajes de error claros para el usuario
+
+---
+
+## Entregables
+
+Para cada proyecto se debe entregar:
+
+1. **Código Fuente**:
+   - Servidor (aplicación Kotlin)
+   - Cliente KMP (con soporte Desktop Windows)
+   - Código común compartido
+   - Repositorio Git con historial de commits en GitHub, GitLab o similar
+
+2. **Archivos de Configuración**:
+   - `server.properties` con valores de ejemplo
+   - `records.json` con estructura inicial
+   - Base de datos de preguntas (para el Trivial)
+
+3. **Documentación**:
+   - README con instrucciones de compilación y ejecución
+   - Documentación del protocolo de comunicación
+   - Diagrama de arquitectura
+   - Manual de usuario
+   - Todo esto debe estar contenido en el README.md del repositorio
+
+4. **Vídeo Demostración** (5-10 minutos):
+   - Explicación del proyecto y la arquitectura de red
+   - Explicación de la arquitectura del código elegida
+   - Funcionamiento del servidor con múltiples clientes
+   - Modo PVP y PVE
+   - Sistema de records
+   - Configuración del juego
+
+---
+
+## Criterios de Evaluación
+
+Cada proyecto será evaluado según:
+
+- **Funcionalidad (40%)**:
+  - El juego funciona correctamente
+  - Modos PVP y PVE implementados
+  - Sistema de records operativo
+  - Configuración desde archivos
+
+- **Comunicación en Red (30%)**:
+  - Protocolo bien diseñado
+  - Gestión correcta de múltiples clientes
+  - Manejo de errores y desconexiones
+  - Validación de datos en el servidor
+
+- **Interfaz de Usuario (15%)**:
+  - UI clara e intuitiva
+  - Feedback visual apropiado
+  - Interfaz optimizada para Desktop Windows
+  - Buena experiencia de usuario
+
+- **Código y Arquitectura (15%)**:
+  - Código limpio y organizado
+  - Uso apropiado de corrutinas
+  - Compartición de código KMP
+  - Gestión de estados
+
+---
+
+## Consejos y Recomendaciones
+
+1. **Comienza por el protocolo**: Define claramente los mensajes entre cliente y servidor antes de implementar
+2. **Prueba con múltiples clientes**: Usa varias instancias del cliente para probar la concurrencia
+3. **Implementa PVE primero**: Es más fácil y te permite validar la lógica antes de añadir PVP
+4. **Usa librerías de serialización**: `kotlinx.serialization` facilita mucho el trabajo con JSON
+5. **Logging**: Implementa logs tanto en cliente como servidor para facilitar la depuración
+6. **Testing**: Prueba casos límite (desconexiones, timeout, datos inválidos)
+7. **Versionado**: Usa Git desde el inicio y haz commits frecuentes
+
+¡Buena suerte con los proyectos!
