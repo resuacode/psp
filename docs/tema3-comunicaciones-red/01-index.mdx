@@ -219,6 +219,40 @@ fun manejarCliente(socket: Socket) {
     }
 }
 ```
+
+```kotlin title="ClienteAdivina.kt"
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+
+fun main() {
+    val socket = Socket("localhost", 5002)
+    val output = PrintWriter(socket.getOutputStream(), true)
+    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    
+    // Leer mensaje inicial del servidor
+    println(input.readLine())
+    
+    val scanner = java.util.Scanner(System.`in`)
+    
+    while (true) {
+        print("Tu intento: ")
+        val intento = scanner.nextLine()
+        
+        output.println(intento)
+        val respuesta = input.readLine()
+        println("Servidor: $respuesta")
+        
+        if (respuesta == "Correcto") {
+            println("¡Ganaste!")
+            break
+        }
+    }
+    
+    socket.close()
+}
+```
 </details>
 
 ### Ejercicio 4: Chat Grupal (Broadcast)
@@ -280,10 +314,51 @@ fun broadcast(mensaje: String) {
     }
 }
 ```
+
+```kotlin title="ClienteChat.kt"
+import java.net.Socket
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import kotlin.concurrent.thread
+
+fun main() {
+    val socket = Socket("localhost", 5003)
+    val output = PrintWriter(socket.getOutputStream(), true)
+    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+    
+    println("Conectado al chat. Escribe tus mensajes:")
+    
+    // Hilo para recibir mensajes
+    thread {
+        try {
+            var mensaje: String?
+            while (input.readLine().also { mensaje = it } != null) {
+                println("\nMensaje: $mensaje")
+                print("> ")
+            }
+        } catch (e: Exception) {
+            println("Desconectado del servidor.")
+        }
+    }
+    
+    // Hilo principal para enviar mensajes
+    val scanner = java.util.Scanner(System.`in`)
+    while (scanner.hasNextLine()) {
+        val mensaje = scanner.nextLine()
+        output.println(mensaje)
+        print("> ")
+    }
+    
+    socket.close()
+}
+```
 </details>
 
 ### Ejercicio 5: Transferencia de Archivos (Binario)
-**Enunciado:** Crea un cliente que lea un archivo local (puedes crear un archivo de texto de prueba) y lo envíe a un servidor. El servidor debe recibir los datos y guardarlos en un nuevo archivo con el nombre "copia_recibida.txt".
+**Enunciado:** Crea un cliente que lea un archivo local (puedes crear un archivo de texto de prueba) y lo envíe a un servidor. 
+El servidor debe recibir los datos y guardarlos en un nuevo archivo con el nombre "copia_recibida.txt".
+
 **Requisitos:**
 - Usar flujos binarios (`InputStream`/`OutputStream`), no de texto (`Reader`/`Writer`), para soportar cualquier tipo de archivo (imágenes, pdf, etc.).
 - Usar un buffer de bytes para la transferencia eficiente.
@@ -351,7 +426,9 @@ fun main() {
 </details>
 
 ### Ejercicio 6: Cliente HTTP Manual
-**Enunciado:** Implementa un programa que actúe como un navegador web muy básico. Debe conectarse al servidor `example.com` en el puerto 80, enviar una petición HTTP GET manual y mostrar el código HTML que devuelve el servidor.
+**Enunciado:** Implementa un programa que actúe como un navegador web muy básico. 
+Debe conectarse al servidor `example.com` en el puerto 80, enviar una petición HTTP GET manual y mostrar el código HTML que devuelve el servidor.
+
 **Requisitos:**
 - No usar librerías HTTP (como OkHttp o Ktor), solo `Socket`.
 - La petición debe seguir el formato del protocolo HTTP:
