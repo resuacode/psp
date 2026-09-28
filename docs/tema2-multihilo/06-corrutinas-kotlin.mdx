@@ -20,6 +20,8 @@ Las **corrutinas** son componentes de código que pueden suspender su ejecución
 | Cambio de contexto | Costoso | Muy barato |
 | Bloqueo | Bloquea el hilo | Suspende sin bloquear |
 | API | Compleja | Simple y legible |
+
+Los **hilos virtuales** de Java 21 (ver [Creación y Gestión de Hilos](./03-creacion-gestion-hilos.mdx)) se acercan a las corrutinas en ligereza, pero las corrutinas siguen aportando concurrencia estructurada, cancelación cooperativa y herramientas como `Flow`, y además funcionan en Android y en Kotlin Multiplatform.
 :::
 
 ### Ventajas de las corrutinas
@@ -36,9 +38,13 @@ Para usar corrutinas, añade la dependencia en tu proyecto:
 
 ```kotlin title="build.gradle.kts"
 dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
 }
 ```
+
+:::note Versiones
+La versión indicada era la más reciente en septiembre de 2026. Puedes consultar la última en el [repositorio de kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/releases).
+:::
 
 ## Conceptos básicos
 
@@ -375,35 +381,37 @@ Permite que las corrutinas hijas fallen sin afectar a sus hermanas:
 
 ```kotlin
 fun main() = runBlocking {
-    val supervisor = SupervisorJob()
-    
-    with(CoroutineScope(coroutineContext + supervisor)) {
-        val child1 = launch {
+    val handler = CoroutineExceptionHandler { _, e ->
+        println("Excepción capturada: ${e.message}")
+    }
+
+    // supervisorScope crea un ámbito con SupervisorJob y espera a todas sus hijas
+    supervisorScope {
+        launch {
             delay(100)
             println("Hija 1 completada")
         }
-        
-        val child2 = launch {
+
+        launch(handler) {
             delay(50)
             throw RuntimeException("Hija 2 falla")
         }
-        
-        val child3 = launch {
+
+        launch {
             delay(150)
-            println("Hija 3 completada") // Se ejecuta aunque child2 falle
+            println("Hija 3 completada") // Se ejecuta aunque la hija 2 falle
         }
-        
-        try {
-            child2.join()
-        } catch (e: Exception) {
-            println("Excepción: ${e.message}")
-        }
-        
-        child1.join()
-        child3.join()
     }
+
+    println("Todas las hijas han terminado")
 }
 ```
+
+Si en lugar de `supervisorScope` usáramos `coroutineScope`, el fallo de la hija 2 cancelaría también a las hijas 1 y 3, y la excepción se propagaría hacia arriba.
+
+:::tip SupervisorJob en clases
+Cuando creamos nuestro propio `CoroutineScope` (por ejemplo, en un servicio), se suele usar `CoroutineScope(SupervisorJob() + Dispatchers.Default)` para que el fallo de una tarea no cancele todas las demás. Es exactamente lo que hace `viewModelScope` en Android.
+:::
 
 ## Operaciones paralelas
 
@@ -455,6 +463,38 @@ fun main() = runBlocking {
     results.forEach { println(it) }
 }
 ```
+
+## Sincronización entre corrutinas: Mutex
+
+Las corrutinas que se ejecutan en un dispatcher con varios hilos (como `Dispatchers.Default`) también pueden sufrir condiciones de carrera al acceder a datos compartidos. Sin embargo, **no debemos usar `synchronized` ni `ReentrantLock`** si dentro de la sección crítica hay funciones de suspensión: esos mecanismos bloquean el hilo y pertenecen a él, mientras que una corrutina puede reanudarse en otro hilo distinto.
+
+Para las corrutinas, `kotlinx.coroutines` ofrece `Mutex`, que **suspende** la corrutina en lugar de bloquear el hilo:
+
+```kotlin
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+var contador = 0
+val mutex = Mutex()
+
+fun main() = runBlocking {
+    withContext(Dispatchers.Default) {
+        repeat(1000) {
+            launch {
+                repeat(100) {
+                    mutex.withLock { // Suspende si otra corrutina tiene el mutex
+                        contador++
+                    }
+                }
+            }
+        }
+    }
+    println("Contador: $contador") // Siempre 100000
+}
+```
+
+De forma análoga, `kotlinx.coroutines.sync.Semaphore` limita el número de corrutinas que acceden a la vez a un recurso (por ejemplo, el número de descargas simultáneas).
 
 ## Channels: Comunicación entre corrutinas
 
@@ -755,7 +795,7 @@ fun main() = runBlocking {
 4. **No bloquees en corrutinas**: Usa funciones suspend
 5. **Limpia recursos**: Usa `try-finally` o `use`
 6. **Evita GlobalScope**: Usa scopes específicos
-7. **Testea con TestCoroutineScheduler**: Para tests deterministas
+7. **Testea con `runTest`**: La librería `kotlinx-coroutines-test` proporciona `runTest`, que ejecuta los tests de corrutinas con un tiempo virtual (los `delay` no esperan de verdad), consiguiendo tests rápidos y deterministas
 
 ## Conclusión
 

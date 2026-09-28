@@ -257,6 +257,27 @@ fun main() {
 }
 ```
 
+### Servidores Concurrentes con Hilos Virtuales (Java 21+)
+
+Crear un hilo de plataforma por cliente tiene un límite: cada hilo reserva memoria para su pila y el sistema operativo tiene que planificarlos todos. Desde Java 21 podemos usar **hilos virtuales** (vistos en el Tema 2), que son muy ligeros. El código del servidor es prácticamente el mismo; solo cambia la forma de crear el hilo:
+
+```kotlin
+fun main() {
+    val serverSocket = ServerSocket(6000)
+    println("Servidor con hilos virtuales iniciado en puerto 6000")
+
+    while (true) {
+        val clientSocket = serverSocket.accept()
+        // Un hilo virtual por cliente: podemos tener miles sin problemas
+        Thread.startVirtualThread {
+            GestorCliente(clientSocket).run()
+        }
+    }
+}
+```
+
+Como `readLine()` y `accept()` son operaciones bloqueantes de E/S, son justo el caso en el que los hilos virtuales brillan: mientras un cliente no envía datos, su hilo virtual no ocupa ningún hilo del sistema operativo.
+
 ### Servidores Concurrentes con Corrutinas
 
 Aunque el uso de `thread` funciona, crear un hilo del sistema operativo para cada cliente es costoso en términos de memoria y tiempo de CPU. Si tuviéramos 10,000 clientes simultáneos, el servidor probablemente colapsaría.
@@ -319,5 +340,5 @@ suspend fun manejarClienteCorrutina(socket: Socket) = withContext(Dispatchers.IO
 ```
 
 :::tip Nota sobre Bloqueo
-En el ejemplo anterior, aunque usamos corrutinas, las llamadas a `input.readLine()` siguen siendo bloqueantes porque `java.net.Socket` es una API bloqueante. Sin embargo, al ejecutarlo en `Dispatchers.IO`, el hilo que se bloquea es uno del pool de IO, no el hilo principal. Para una solución totalmente no bloqueante, se deberían usar librerías como **Ktor** o **Java NIO**, pero para aprender los conceptos básicos, envolver sockets clásicos en corrutinas es un excelente primer paso.
+En el ejemplo anterior, aunque usamos corrutinas, las llamadas a `input.readLine()` siguen siendo bloqueantes porque `java.net.Socket` es una API bloqueante. Sin embargo, al ejecutarlo en `Dispatchers.IO`, el hilo que se bloquea es uno del pool de IO, no el hilo principal. Para una solución totalmente no bloqueante, se deberían usar librerías como **Ktor** (en el Tema 4 veremos un servidor con sockets de Ktor) o **Java NIO**, pero para aprender los conceptos básicos, envolver sockets clásicos en corrutinas es un excelente primer paso.
 :::

@@ -23,7 +23,7 @@ En el ejemplo anterior, se define una clase de datos `Persona` que tiene dos pro
 
 Las clases de datos en Kotlin tienen las siguientes propiedades:
 
-- **Propiedades de solo lectura**: Las propiedades de una clase de datos son de solo lectura y no se pueden modificar una vez que se han inicializado.
+- **Constructor primario obligatorio**: El constructor primario debe tener al menos un parámetro, y todos sus parámetros deben ser propiedades (`val` o `var`). Se recomienda usar `val` para que los objetos sean inmutables y usar `copy()` cuando necesitemos una versión modificada.
 
 - **Métodos `toString()`, `equals()` y `hashCode()`**: Las clases de datos en Kotlin generan automáticamente los métodos `toString()`, `equals()` y `hashCode()` a partir de las propiedades de la clase.
 
@@ -33,7 +33,7 @@ Las clases de datos en Kotlin tienen las siguientes propiedades:
 
 ## Creación de objetos de clases de datos
 
-Para crear un objeto de una clase de datos en Kotlin, puedes utilizar la palabra clave `data` seguida del nombre de la clase y los valores de las propiedades.
+Para crear un objeto de una clase de datos en Kotlin se llama a su constructor, igual que con cualquier otra clase (la palabra `data` solo se usa en la declaración).
 
 ```kotlin
 val persona = Persona("Juan", 25)

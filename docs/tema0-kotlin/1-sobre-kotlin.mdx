@@ -2,7 +2,7 @@ import CodeBlock from '@theme/CodeBlock';
 
 # El lenguaje Kotlin
 
-Kotlin es un lenguaje de programación moderno, conciso y seguro que se ejecuta en la máquina virtual de Java (JVM) y también se puede compilar a JavaScript o nativo. Fue desarrollado por JetBrains y Google en 2011 y se ha convertido en el lenguaje de programación oficial para el desarrollo de aplicaciones Android.
+Kotlin es un lenguaje de programación moderno, conciso y seguro que se ejecuta en la máquina virtual de Java (JVM) y también se puede compilar a JavaScript o nativo. Fue presentado por JetBrains en 2011 (la versión 1.0 llegó en 2016). En 2017 Google lo anunció como lenguaje oficial para Android y desde 2019 es el lenguaje preferente (*Kotlin-first*) para el desarrollo de aplicaciones Android.
 
 ## Características de Kotlin
 
@@ -18,9 +18,11 @@ Kotlin es un lenguaje de programación moderno, conciso y seguro que se ejecuta 
 
 - **Clases de datos**: Kotlin tiene una sintaxis especial para crear clases de datos que contienen solo datos y no tienen comportamiento.   
 
-- **Corrutinas**: Kotlin tiene soporte para corutinas, que te permiten escribir código asincrónico de manera secuencial.    
+- **Corrutinas**: Kotlin tiene soporte para corrutinas, que te permiten escribir código asincrónico de manera secuencial.    
 
 - **Jetpack Compose**: Kotlin es el lenguaje oficial para el desarrollo de aplicaciones Android con Jetpack Compose, un marco de trabajo moderno para la creación de interfaces de usuario. 
+
+- **Kotlin Multiplatform**: Kotlin permite compartir código entre Android, escritorio (JVM), iOS y web. Junto con Compose Multiplatform, también se puede compartir la interfaz de usuario.
 
 ## Apartados
 
@@ -412,8 +414,8 @@ fun main() {
 
 ```kotlin
 sealed class EstadoRed {
-    object Desconectado : EstadoRed()
-    object Conectando : EstadoRed()
+    data object Desconectado : EstadoRed()
+    data object Conectando : EstadoRed()
     data class Conectado(val velocidad: Int, val tipo: String) : EstadoRed()
     data class Error(val mensaje: String, val codigo: Int) : EstadoRed()
     data class Reconectando(val intento: Int, val maxIntentos: Int) : EstadoRed()
@@ -721,16 +723,16 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 sealed class Prioridad(val valor: Int, val nombre: String) {
-    object Baja : Prioridad(1, "Baja")
-    object Media : Prioridad(2, "Media")
-    object Alta : Prioridad(3, "Alta")
-    object Critica : Prioridad(4, "Crítica")
+    data object Baja : Prioridad(1, "Baja")
+    data object Media : Prioridad(2, "Media")
+    data object Alta : Prioridad(3, "Alta")
+    data object Critica : Prioridad(4, "Crítica")
 }
 
 sealed class EstadoTarea {
-    object Pendiente : EstadoTarea()
-    object EnProgreso : EstadoTarea()
-    object Completada : EstadoTarea()
+    data object Pendiente : EstadoTarea()
+    data object EnProgreso : EstadoTarea()
+    data object Completada : EstadoTarea()
     data class Cancelada(val motivo: String) : EstadoTarea()
 }
 

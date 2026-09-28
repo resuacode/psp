@@ -25,13 +25,14 @@ Aunque podemos usar `Socket` para hablar HTTP (enviando cadenas "GET /..."), Jav
 Es la forma más básica disponible en el JDK, aunque su API es un poco antigua.
 
 ```kotlin
-import java.net.URL
+import java.net.URI
 import java.net.HttpURLConnection
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
 fun main() {
-    val url = URL("http://example.com")
+    // Los constructores de URL están obsoletos desde Java 20: se crea un URI y se convierte
+    val url = URI("http://example.com").toURL()
     val conexion = url.openConnection() as HttpURLConnection
     conexion.requestMethod = "GET"
     
@@ -85,11 +86,21 @@ Ktor es un framework asíncrono creado por JetBrains. Su cliente es multiplatafo
 
 **Dependencias necesarias (build.gradle.kts):**
 ```kotlin
-implementation("io.ktor:ktor-client-core:2.3.7")
-implementation("io.ktor:ktor-client-cio:2.3.7") // Motor CIO (Coroutine I/O)
-implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
-implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
+plugins {
+    kotlin("plugin.serialization") version "<tu versión de Kotlin>" // Para @Serializable
+}
+
+dependencies {
+    implementation("io.ktor:ktor-client-core:3.6.0")
+    implementation("io.ktor:ktor-client-cio:3.6.0") // Motor CIO (Coroutine I/O)
+    implementation("io.ktor:ktor-client-content-negotiation:3.6.0")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.6.0")
+}
 ```
+
+:::note Versiones
+Las versiones indicadas eran las más recientes en septiembre de 2026. Ktor 3 (publicado en 2024) sustituyó a Ktor 2; la API del cliente es prácticamente igual, pero no se deben mezclar dependencias de ambas versiones.
+:::
 
 **Ejemplo Práctico (API de Chistes):**
 ```kotlin
@@ -117,31 +128,62 @@ fun main() = runBlocking {
 }
 ```
 
+**Ejemplo con deserialización automática de JSON:** gracias al plugin `ContentNegotiation` y a `kotlinx.serialization`, Ktor puede convertir directamente la respuesta JSON en un objeto Kotlin:
+
+```kotlin
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.serialization.kotlinx.json.*
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+
+@Serializable
+data class Chiste(val id: String, val value: String)
+
+fun main() = runBlocking {
+    HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true }) // Ignorar campos del JSON que no están en la clase
+        }
+    }.use { client ->
+        val chiste: Chiste = client.get("https://api.chucknorris.io/jokes/random").body()
+        println(chiste.value)
+    }
+}
+```
+
 #### Retrofit
 Retrofit (de Square) es el estándar de facto en el desarrollo nativo de Android. Su filosofía es convertir tu API HTTP en una interfaz Kotlin.
 
 **Dependencias necesarias:**
 ```kotlin
-implementation("com.squareup.retrofit2:retrofit:2.9.0")
-implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+implementation("com.squareup.retrofit2:retrofit:3.0.0")
+implementation("com.squareup.retrofit2:converter-gson:3.0.0")
 ```
 
 **Ejemplo Práctico (API de Usuarios):**
 ```kotlin
+import kotlinx.coroutines.runBlocking
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Path
 
 // 1. Definir el modelo de datos (Data Class) que mapea el JSON
 data class Usuario(val id: Int, val name: String, val email: String)
 
-// 2. Definir la interfaz de la API
+// 2. Definir la interfaz de la API con funciones suspend
 interface JsonPlaceholderApi {
-    @GET("users/1")
-    fun getUsuario(): retrofit2.Call<Usuario> // Retorna un Call que podemos ejecutar
+    @GET("users/{id}")
+    suspend fun getUsuario(@Path("id") id: Int): Response<Usuario>
 }
 
-fun main() {
+fun main() = runBlocking {
     // 3. Crear la instancia de Retrofit
     val retrofit = Retrofit.Builder()
         .baseUrl("https://jsonplaceholder.typicode.com/")
@@ -152,9 +194,9 @@ fun main() {
 
     println("Consultando API con Retrofit...")
 
-    // 4. Hacer la llamada (execute() es síncrono, enqueue() sería asíncrono)
+    // 4. Hacer la llamada: al ser suspend, se integra directamente con las corrutinas
     try {
-        val response = api.getUsuario().execute()
+        val response = api.getUsuario(1)
         
         if (response.isSuccessful) {
             val usuario = response.body()
@@ -170,6 +212,10 @@ fun main() {
 }
 ```
 
+:::info `Call` frente a funciones `suspend`
+En versiones antiguas de Retrofit los métodos devolvían un `Call<T>` que había que ejecutar con `execute()` (síncrono) o `enqueue()` (con *callbacks*). Hoy lo habitual en Kotlin es declararlos como funciones `suspend` que devuelven directamente `T` o `Response<T>` (si queremos consultar el código de estado).
+:::
+
 #### Servidor HTTP Básico
 
 El JDK incluye un servidor HTTP ligero (`com.sun.net.httpserver.HttpServer`) ideal para pruebas o servicios simples sin necesidad de desplegar un servidor pesado como Tomcat o Apache.
@@ -177,7 +223,7 @@ El JDK incluye un servidor HTTP ligero (`com.sun.net.httpserver.HttpServer`) ide
 ```kotlin
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
-import java.io.OutputStream
+import java.util.concurrent.Executors
 
 fun main() {
     val server = HttpServer.create(InetSocketAddress(8000), 0)
@@ -185,17 +231,19 @@ fun main() {
     // Definir un contexto (ruta)
     server.createContext("/hola") { exchange ->
         val respuesta = "¡Hola desde el servidor HTTP en Kotlin!"
+        val bytes = respuesta.toByteArray() // UTF-8
         
-        // Enviar cabeceras (código 200 OK, longitud)
-        exchange.sendResponseHeaders(200, respuesta.length.toLong())
+        // Enviar cabeceras (código 200 OK y longitud del cuerpo en BYTES, no en caracteres)
+        exchange.responseHeaders.add("Content-Type", "text/plain; charset=utf-8")
+        exchange.sendResponseHeaders(200, bytes.size.toLong())
         
-        // Enviar cuerpo
-        val os: OutputStream = exchange.responseBody
-        os.write(respuesta.toByteArray())
-        os.close()
+        // Enviar cuerpo (use cierra el flujo al terminar)
+        exchange.responseBody.use { it.write(bytes) }
     }
     
-    server.executor = null // Usa el ejecutor por defecto
+    // Por defecto (executor = null) todas las peticiones se atienden en un único hilo.
+    // Con un hilo virtual por petición (Java 21+) el servidor atiende peticiones concurrentes.
+    server.executor = Executors.newVirtualThreadPerTaskExecutor()
     println("Servidor HTTP iniciado en puerto 8000")
     server.start()
 }
@@ -205,7 +253,11 @@ fun main() {
 
 FTP se utiliza para la transferencia de archivos. Implementar un cliente FTP desde cero con Sockets es complejo debido a que utiliza dos canales (uno de control y otro de datos).
 
-En Java/Kotlin, la librería estándar no incluye un cliente FTP completo. Lo habitual es utilizar **Apache Commons Net**.
+En Java/Kotlin, la librería estándar no incluye un cliente FTP completo. Lo habitual es utilizar **Apache Commons Net** (`implementation("commons-net:commons-net:3.13.0")`).
+
+:::warning FTP no cifra nada
+FTP envía usuario, contraseña y ficheros en texto plano. En entornos reales se usa **FTPS** (FTP sobre TLS, clase `FTPSClient` de la misma librería) o **SFTP** (transferencia sobre SSH, que es un protocolo distinto).
+:::
 
 ```kotlin
 // Ejemplo conceptual (requiere librería commons-net)
@@ -225,7 +277,11 @@ ftp.disconnect()
 
 ### SMTP (Simple Mail Transfer Protocol)
 
-Para el envío de correos electrónicos, utilizamos SMTP. Al igual que con FTP, se suelen usar librerías especializadas como **Jakarta Mail** (antes JavaMail).
+Para el envío de correos electrónicos, utilizamos SMTP. Al igual que con FTP, se suelen usar librerías especializadas como **Jakarta Mail** (antes JavaMail). Su implementación de referencia es Eclipse Angus Mail (`implementation("org.eclipse.angus:angus-mail:2.0.5")`), y las clases se importan del paquete `jakarta.mail`.
+
+:::warning Contraseñas de aplicación
+Gmail y la mayoría de proveedores ya no permiten iniciar sesión por SMTP con la contraseña normal de la cuenta. Hay que activar la verificación en dos pasos y generar una **contraseña de aplicación**, o bien autenticarse con OAuth 2.0. Y, por supuesto, nunca se debe escribir la contraseña directamente en el código: se lee de una variable de entorno o de un fichero de configuración que no se sube al repositorio.
+:::
 
 ```kotlin
 // Ejemplo conceptual de envío de email
@@ -238,7 +294,7 @@ props["mail.smtp.starttls.enable"] = "true"
 
 val session = Session.getInstance(props, object : Authenticator() {
     override fun getPasswordAuthentication(): PasswordAuthentication {
-        return PasswordAuthentication("tu_correo@gmail.com", "tu_password")
+        return PasswordAuthentication("tu_correo@gmail.com", System.getenv("SMTP_PASSWORD"))
     }
 })
 

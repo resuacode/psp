@@ -51,7 +51,7 @@ En el ejemplo anterior, se utiliza la función `run` para acceder a las propieda
 
 ## `with`
 
-La función `with` es similar a `run`, pero se utiliza con un objeto como argumento en lugar de un receptor.
+La función `with` es similar a `run`, pero no es una función de extensión: el objeto se le pasa como argumento (`with(objeto) { ... }`) en lugar de llamarla sobre él (`objeto.run { ... }`). Por eso no se puede combinar con `?.`.
 
 La función `with` se utiliza para realizar operaciones en un objeto y devolver un resultado.
 
@@ -83,7 +83,7 @@ En el ejemplo anterior, se utiliza la función `apply` para acceder a las propie
 
 ## `also`
 
-La función `also` es similar a `apply`, pero se utiliza con un objeto como argumento en lugar de un receptor.
+La función `also` es similar a `apply` (devuelve el propio objeto), pero dentro del bloque el objeto se referencia con `it` en lugar de con `this`. Se suele usar para efectos secundarios, como registrar un log o validar, sin modificar la cadena de llamadas.
 
 La función `also` se utiliza para realizar operaciones en un objeto y devolver el objeto original.
 
@@ -104,9 +104,17 @@ Podríamos decir que las diferencias generales son las siguientes:
 
 - `let` se utiliza para realizar operaciones en un objeto y devolver un resultado.
 - `run` se utiliza para acceder a las propiedades y métodos del objeto sin necesidad de utilizar `it`.
-- `with` es similar a `run`, pero se utiliza con un objeto como argumento en lugar de un receptor.
-- `apply` se utiliza para realizar operaciones en un objeto y devolver el objeto modificado.
-- `also` es similar a `apply`, pero se utiliza con un objeto como argumento en lugar de un receptor.
+- `with` es similar a `run`, pero recibe el objeto como argumento en lugar de llamarse sobre él.
+- `apply` se utiliza para configurar un objeto y devolver el propio objeto.
+- `also` es similar a `apply`, pero el objeto se referencia con `it` y se usa para efectos secundarios.
+
+| Función | Referencia al objeto | Valor devuelto | Uso típico |
+|---------|---------------------|----------------|------------|
+| `let` | `it` | Resultado del bloque | Operar con valores nulables (`?.let`) y transformar |
+| `run` | `this` | Resultado del bloque | Calcular un resultado usando el objeto |
+| `with` | `this` | Resultado del bloque | Agrupar varias llamadas sobre un objeto |
+| `apply` | `this` | El propio objeto | Configurar/inicializar un objeto |
+| `also` | `it` | El propio objeto | Efectos secundarios (logs, validaciones) |
 
 En la siguiente imagen se muestra un resumen visual de las diferencias entre las *scope functions*:
 

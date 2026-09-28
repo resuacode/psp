@@ -76,7 +76,7 @@ class ThreadAwareLogger(name: String) {
     }
     
     fun log(message: String, level: String = "INFO") {
-        val threadId = Thread.currentThread().id
+        val threadId = Thread.currentThread().threadId() // Java 19+ (antes: .id, ahora obsoleto)
         val threadName = Thread.currentThread().name
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_TIME)
         
@@ -226,7 +226,7 @@ class AccessTracker {
         val stack = thread.stackTrace.take(5).joinToString("\n  ")
         
         val info = AccessInfo(
-            threadId = thread.id,
+            threadId = thread.threadId(),
             threadName = thread.name,
             timestamp = System.nanoTime(),
             type = type,
@@ -269,6 +269,17 @@ fun monitoredUpdate() {
 ```
 
 ## Herramientas de depuración
+
+:::tip Volcado de hilos desde la terminal
+No hace falta modificar el código para obtener un volcado de hilos: con las herramientas del JDK podemos obtenerlo de cualquier JVM en ejecución.
+
+```bash
+jps -l                          # Lista los procesos Java y su PID
+jcmd <PID> Thread.print         # Vuelca el estado de todos sus hilos (equivale a jstack <PID>)
+```
+
+Si hay un interbloqueo, la salida termina con un apartado `Found one Java-level deadlock` que indica qué hilos están implicados y qué lock espera cada uno.
+:::
 
 ### 1. VisualVM
 
@@ -436,6 +447,7 @@ class DeadlockTest {
 ### 3. Property-based testing
 
 ```kotlin
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.RepeatedTest
 
 class ConcurrentPropertyTest {

@@ -23,10 +23,14 @@ La criptografía es la ciencia de cifrar y descifrar información. En programaci
 
 Una función hash toma una entrada de cualquier tamaño y devuelve una cadena de longitud fija (hash). Es **unidireccional**: no se puede recuperar el dato original a partir del hash.
 
-- **Uso:** Verificar integridad de archivos, almacenar contraseñas de forma segura.
+- **Uso:** Verificar la integridad de archivos y mensajes, firmas digitales y, con algoritmos específicos, almacenar contraseñas.
 - **Algoritmos:**
     - **Inseguros (NO USAR):** MD5, SHA-1 (vulnerables a colisiones).
     - **Seguros:** SHA-256, SHA-512, SHA-3.
+
+:::warning Hash de contraseñas
+SHA-256 es seguro para verificar integridad, pero **no es adecuado por sí solo para guardar contraseñas**, porque es demasiado rápido y permite ataques de fuerza bruta. Para contraseñas se usan funciones lentas con *salt*: **Argon2**, **bcrypt** o **PBKDF2** (ver el apartado de prácticas de programación segura y el ejercicio 1 del tema).
+:::
 
 ```kotlin
 import java.security.MessageDigest
@@ -54,9 +58,11 @@ Utiliza la **misma clave** tanto para cifrar como para descifrar.
 - **Algoritmos:** AES (Advanced Encryption Standard) es el estándar actual.
 
 ```kotlin
+import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 
 fun main() {
     // 1. Generar una clave AES
@@ -66,20 +72,26 @@ fun main() {
 
     val mensaje = "Mensaje Secreto"
 
-    // 2. Cifrar
-    val cipher = Cipher.getInstance("AES")
-    cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+    // 2. Cifrar con AES en modo GCM. Cada cifrado necesita un IV (nonce) aleatorio de 12 bytes
+    //    que NUNCA se debe repetir con la misma clave. El IV no es secreto: se envía junto al mensaje.
+    val iv = ByteArray(12).also { SecureRandom().nextBytes(it) }
+    val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
     val mensajeCifrado = cipher.doFinal(mensaje.toByteArray())
-    println("Cifrado (bytes): ${mensajeCifrado.size} bytes")
+    println("Cifrado (bytes): ${mensajeCifrado.size} bytes") // Texto + 16 bytes de etiqueta de autenticación
 
-    // 3. Descifrar
-    cipher.init(Cipher.DECRYPT_MODE, secretKey)
+    // 3. Descifrar (con la misma clave y el mismo IV)
+    cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
     val mensajeDescifradoBytes = cipher.doFinal(mensajeCifrado)
     val mensajeDescifrado = String(mensajeDescifradoBytes)
     
     println("Descifrado: $mensajeDescifrado")
 }
 ```
+
+:::danger Indicar siempre el modo de cifrado
+`Cipher.getInstance("AES")` utiliza por defecto el modo **ECB**, que es inseguro: bloques de texto iguales producen bloques cifrados iguales y se pueden ver patrones de los datos originales. Usaremos siempre **`AES/GCM/NoPadding`**, que además de cifrar incluye una etiqueta de autenticación: si alguien modifica el mensaje cifrado, al descifrar se lanza una `AEADBadTagException`.
+:::
 
 ### 3. Cifrado Asimétrico (Clave Pública)
 
@@ -92,13 +104,43 @@ También funciona a la inversa para **Firmas Digitales**:
 
 - **Ventaja:** Resuelve el problema del intercambio de claves.
 - **Desventaja:** Es computacionalmente muy lento.
-- **Algoritmos:** RSA, ECC (Curva Elíptica).
+- **Algoritmos:** RSA (con claves de al menos 2048 bits), ECC (Curva Elíptica: ECDSA, Ed25519, X25519).
+
+**Ejemplo de firma digital con Ed25519 (disponible desde Java 15):**
+
+```kotlin
+import java.security.KeyPairGenerator
+import java.security.Signature
+
+fun main() {
+    // 1. Generar el par de claves (pública y privada)
+    val parClaves = KeyPairGenerator.getInstance("Ed25519").generateKeyPair()
+    val documento = "Transferir 100€ a la cuenta ES12...".toByteArray()
+
+    // 2. El emisor FIRMA con su clave privada
+    val firmador = Signature.getInstance("Ed25519")
+    firmador.initSign(parClaves.private)
+    firmador.update(documento)
+    val firma = firmador.sign()
+
+    // 3. Cualquiera puede VERIFICAR con la clave pública
+    val verificador = Signature.getInstance("Ed25519")
+    verificador.initVerify(parClaves.public)
+    verificador.update(documento)
+    println("¿Firma válida? ${verificador.verify(firma)}") // true
+
+    // Si el documento se modifica, la verificación falla
+    verificador.initVerify(parClaves.public)
+    verificador.update("Transferir 900€ a la cuenta ES12...".toByteArray())
+    println("¿Firma válida tras modificar? ${verificador.verify(firma)}") // false
+}
+```
 
 ### 4. Cifrado Híbrido (SSL/TLS)
 
 En la práctica (como en HTTPS), se combinan ambos mundos:
-1.  Se usa **Cifrado Asimétrico** (RSA/ECC) solo al principio para establecer la conexión y compartir de forma segura una clave temporal.
-2.  Una vez compartida la clave, se usa **Cifrado Simétrico** (AES) para transmitir los datos de la sesión a alta velocidad.
+1.  Al principio de la conexión (*handshake*) se usa **criptografía asimétrica**: el servidor demuestra su identidad con su certificado y su firma (RSA/ECDSA), y ambas partes acuerdan una clave de sesión temporal mediante un intercambio **Diffie-Hellman de curva elíptica (ECDHE)**. En TLS 1.3 este es el único mecanismo permitido, porque garantiza el **secreto hacia adelante** (*forward secrecy*): aunque en el futuro se robe la clave privada del servidor, no se podrán descifrar las comunicaciones pasadas.
+2.  Una vez acordada la clave, se usa **Cifrado Simétrico** (AES-GCM o ChaCha20-Poly1305) para transmitir los datos de la sesión a alta velocidad.
 
 ## Prácticas de Programación Segura
 
@@ -109,7 +151,8 @@ Más allá de la criptografía, debemos proteger nuestro código de vulnerabilid
     - Evitar **XSS (Cross-Site Scripting)**: Escapar caracteres especiales en HTML.
 2.  **Principio de Mínimo Privilegio:** El servicio debe ejecutarse con los permisos mínimos necesarios en el sistema operativo (no como root/admin).
 3.  **Gestión de Errores:** No mostrar trazas de error (stack traces) al usuario final, ya que revelan información sobre la estructura interna del sistema.
-4.  **Almacenamiento de Contraseñas:** NUNCA guardar contraseñas en texto plano. Usar algoritmos de hash lentos con "salt" (como BCrypt, Argon2 o PBKDF2) para dificultar los ataques de fuerza bruta.
+4.  **Almacenamiento de Contraseñas:** NUNCA guardar contraseñas en texto plano ni con un hash rápido (MD5, SHA-256…). Usar algoritmos de hash lentos con "salt" (como Argon2, bcrypt o PBKDF2) para dificultar los ataques de fuerza bruta. El JDK incluye PBKDF2 (`SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")`); para Argon2 o bcrypt hay que usar librerías externas como Bouncy Castle o Spring Security Crypto.
+5.  **Secretos fuera del código:** Las contraseñas, claves de API y claves de cifrado no se escriben en el código fuente ni se suben al repositorio. Se leen de variables de entorno, ficheros de configuración excluidos de Git (`.gitignore`) o almacenes de secretos.
 
 ```kotlin
 // Ejemplo conceptual de verificación de password (pseudocódigo)
@@ -123,7 +166,8 @@ fun registrarUsuario(password: String) {
 fun login(password: String): Boolean {
     val (hashGuardado, saltGuardado) = obtenerDeBD(usuario)
     val hashIntento = hashLento(password, saltGuardado)
-    return hashIntento == hashGuardado
+    // Comparación en tiempo constante para no dar pistas por el tiempo de respuesta
+    return MessageDigest.isEqual(hashIntento, hashGuardado)
 }
 
 ```

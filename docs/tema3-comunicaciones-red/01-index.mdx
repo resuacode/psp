@@ -100,7 +100,7 @@ fun main() {
 ```kotlin title="ServidorHoraUDP.kt"
 import java.net.DatagramPacket
 import java.net.DatagramSocket
-import java.util.Date
+import java.time.LocalDateTime
 
 fun main() {
     val socket = DatagramSocket(5001)
@@ -111,7 +111,7 @@ fun main() {
         val packet = DatagramPacket(buffer, buffer.size)
         socket.receive(packet) // Espera petición
         
-        val fecha = Date().toString()
+        val fecha = LocalDateTime.now().toString()
         val respuestaBytes = fecha.toByteArray()
         
         val respuestaPacket = DatagramPacket(

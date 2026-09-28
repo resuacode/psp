@@ -21,6 +21,9 @@ Antes de culpar al código, debemos asegurarnos de que nuestro servidor está re
 
 - **`ss` (Socket Statistics)**: Es el reemplazo moderno y más rápido de netstat en Linux.
     - `ss -lntu`: Muestra puertos **l**istening (escuchando), **n**uméricos (sin resolver DNS), **t**cp y **u**dp.
+    - `ss -lntp`: Añade el **p**roceso (nombre y PID) que tiene abierto cada puerto (puede requerir `sudo`).
+
+- **En Windows**: `netstat -ano` muestra también el PID de cada conexión, y en PowerShell `Get-NetTCPConnection -LocalPort 6000` o `Test-NetConnection localhost -Port 6000` permiten comprobar un puerto concreto.
     
     ```bash
     # Ejemplo de salida donde vemos nuestro servidor escuchando en el puerto 6000
@@ -38,7 +41,7 @@ Antes de culpar al código, debemos asegurarnos de que nuestro servidor está re
 
 A veces queremos probar si nuestro servidor responde correctamente sin necesidad de escribir un cliente completo.
 
-- **`telnet`**: Permite conectarse a un puerto TCP y enviar texto plano.
+- **`telnet`**: Permite conectarse a un puerto TCP y enviar texto plano. En muchos sistemas actuales ya no viene instalado por defecto (en Windows hay que activarlo como característica opcional), por lo que suele preferirse `nc`.
     ```bash
     telnet localhost 6000
     # Una vez conectado, lo que escribas se enviará al servidor

@@ -2,7 +2,7 @@ import CodeBlock from '@theme/CodeBlock';
 
 # Listas en Kotlin
 
-En Kotlin, puedes crear listas utilizando la función `listOf()`. Las listas en Kotlin son inmutables por defecto, lo que significa que no puedes modificar su tamaño una vez que se han creado.
+En Kotlin, puedes crear listas utilizando la función `listOf()`. Las listas creadas con `listOf()` son de **solo lectura** (tipo `List`): no se pueden añadir, eliminar ni modificar elementos.
 
 ```kotlin
 val numeros = listOf(1, 2, 3, 4, 5)
@@ -37,28 +37,22 @@ numeros.forEach { numero ->
 
 En el ejemplo anterior, se itera sobre los elementos de la lista `numeros` utilizando un bucle `for` y la función `forEach()`.
 
-## Listas de tipos primitivos
+## Listas y tipos primitivos
 
-En Kotlin, puedes utilizar listas de tipos primitivos como `IntList`, `DoubleList`, `BooleanList`, etc. para mejorar el rendimiento de tu código.
-
-```kotlin
-val enteros = intListOf(1, 2, 3, 4, 5)
-val dobles = doubleListOf(1.0, 2.0, 3.0, 4.0, 5.0)
-val booleanos = booleanListOf(true, false, true, false)
-```
-
-En el ejemplo anterior, se crean listas de tipos primitivos `IntList`, `DoubleList` y `BooleanList` con valores iniciales.
+A diferencia de los arrays, la librería estándar de Kotlin **no tiene listas especializadas en tipos primitivos**: una `List<Int>` siempre guarda objetos. Si necesitamos el máximo rendimiento con muchos números, usaremos `IntArray`, `DoubleArray`, etc. (ver [Arrays en Kotlin](./41-arrays.mdx)).
 
 ## Modificación de elementos de una lista
 
-Las listas en Kotlin son inmutables por defecto, por lo que no puedes modificar los elementos de una lista una vez que se ha creado. Si necesitas una lista mutable, puedes utilizar la función `mutableListOf()`.
+Las listas creadas con `listOf()` son de solo lectura, por lo que no puedes modificar sus elementos. Si necesitas una lista mutable, puedes utilizar la función `mutableListOf()`.
 
 ```kotlin
 val numeros = mutableListOf(1, 2, 3, 4, 5)
 numeros[0] = 10
+numeros.add(6)
+numeros.removeAt(1)
 ```
 
-En el ejemplo anterior, se crea una lista mutable `numeros` con los valores `1, 2, 3, 4, 5`. Se modifica el primer elemento de la lista asignándole el valor `10`.
+En el ejemplo anterior, se crea una lista mutable `numeros` con los valores `1, 2, 3, 4, 5`. Se modifica el primer elemento asignándole el valor `10`, se añade el `6` al final y se elimina el elemento de la posición `1`.
 
 ## Operaciones comunes con listas
 
@@ -69,11 +63,12 @@ val cuadrados = numeros.map { numero -> numero * numero }
 val pares = numeros.filter { numero -> numero % 2 == 0 }
 val suma = numeros.reduce { acc, numero -> acc + numero }
 val ordenados = numeros.sortedBy { numero -> numero }
+val paresEImpares = numeros.groupBy { numero -> if (numero % 2 == 0) "par" else "impar" }
 ```
 
-En el ejemplo anterior, se utilizan las funciones de extensión `map()`, `filter()`, `reduce()` y `sortedBy()` para realizar operaciones comunes con la lista `numeros`.
+En el ejemplo anterior, se utilizan las funciones de extensión `map()`, `filter()`, `reduce()`, `sortedBy()` y `groupBy()` para realizar operaciones comunes con la lista `numeros`.
 
-Estás funciones hacen lo siguiente:
+Estas funciones hacen lo siguiente:
 
 - `map()`: Aplica una función a cada elemento de la lista y devuelve una nueva lista con los resultados.
 
@@ -101,9 +96,9 @@ Su funcionalidad es la siguiente:
 
 - `sum()`: Calcula la suma de los elementos de la lista.
 
-- `max()`: Devuelve el valor máximo de la lista.
+- `max()`: Devuelve el valor máximo de la lista. Lanza una excepción si la lista está vacía; en ese caso es más seguro `maxOrNull()`.
 
-- `min()`: Devuelve el valor mínimo de la lista.
+- `min()`: Devuelve el valor mínimo de la lista (o `minOrNull()` para listas que pueden estar vacías).
 
 - `average()`: Calcula el promedio de los elementos de la lista.
 

@@ -62,7 +62,34 @@ fun main() {
 }
 ```
 
-### 4. E/S No Bloqueante (NIO / Asíncrono)
+### 4. Hilos Virtuales (Java 21+)
+Los hilos virtuales combinan la sencillez del modelo "un hilo por cliente" con la escalabilidad de los modelos asíncronos. Como son muy ligeros, podemos crear uno por cliente aunque haya decenas de miles, y la JVM se encarga de repartirlos entre unos pocos hilos del sistema operativo.
+- **Ventaja:** El código sigue siendo secuencial y bloqueante (fácil de leer y depurar), pero escala mucho mejor que con hilos de plataforma.
+- **Desventaja:** No aporta nada si el trabajo es intensivo en CPU; su ventaja está en las esperas de E/S.
+
+```kotlin
+import java.net.ServerSocket
+import java.util.concurrent.Executors
+
+fun main() {
+    val serverSocket = ServerSocket(8080)
+    println("Servidor con hilos virtuales iniciado...")
+
+    Executors.newVirtualThreadPerTaskExecutor().use { executor ->
+        while (true) {
+            val clientSocket = serverSocket.accept()
+            executor.execute {
+                clientSocket.use {
+                    println("Atendiendo cliente en ${Thread.currentThread()}")
+                    Thread.sleep(2000) // Simulamos trabajo de E/S
+                }
+            }
+        }
+    }
+}
+```
+
+### 5. E/S No Bloqueante (NIO / Asíncrono)
 Es el modelo más escalable (usado por Nginx, Node.js, Netty). Un solo hilo puede gestionar miles de conexiones.
 - En lugar de bloquearse esperando a leer datos (`read()`), el hilo pregunta al sistema operativo: "¿Qué sockets tienen datos listos?".
 - Solo procesa los que tienen actividad.
@@ -73,12 +100,11 @@ import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.*
-import java.net.InetSocketAddress
 
-// Ejemplo conceptual usando Ktor Network (requiere librería externa)
+// Requiere la dependencia io.ktor:ktor-network:3.6.0
 fun main() = runBlocking {
-    val selectorManager = ActorSelectorManager(Dispatchers.IO)
-    val serverSocket = aSocket(selectorManager).tcp().bind(InetSocketAddress("127.0.0.1", 9002))
+    val selectorManager = SelectorManager(Dispatchers.IO)
+    val serverSocket = aSocket(selectorManager).tcp().bind("127.0.0.1", 9002)
     
     println("Servidor Asíncrono iniciado...")
     
@@ -92,7 +118,7 @@ fun main() = runBlocking {
             
             try {
                 while (true) {
-                    val line = input.readUTF8Line() ?: break
+                    val line = input.readLine() ?: break // null cuando el cliente cierra la conexión
                     output.writeStringUtf8("Eco: $line\n")
                 }
             } catch (e: Throwable) {

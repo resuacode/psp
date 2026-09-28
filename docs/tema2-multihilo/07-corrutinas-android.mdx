@@ -28,29 +28,42 @@ El hilo principal (Main Thread o UI Thread) es responsable de todas las interacc
 ### Dependencias en build.gradle.kts
 
 ```kotlin title="app/build.gradle.kts"
+plugins {
+    // ...plugins de Android y Kotlin que crea el asistente...
+    id("com.google.devtools.ksp") // Necesario para el compilador de Room
+}
+
 dependencies {
     // Corrutinas
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     
     // Lifecycle y ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     
     // Compose
-    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.ui:ui-tooling-preview")
     
     // Para llamadas de red (opcional)
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
     
     // Room para base de datos (opcional)
-    implementation("androidx.room:room-runtime:2.6.0")
-    implementation("androidx.room:room-ktx:2.6.0")
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
+
+    // WorkManager para tareas en segundo plano (opcional)
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 }
 ```
+
+:::note Versiones y catálogo de versiones
+Las versiones indicadas eran las más recientes en septiembre de 2026. Los proyectos nuevos de Android Studio declaran las dependencias en un **catálogo de versiones** (`gradle/libs.versions.toml`) y en el `build.gradle.kts` se referencian como `implementation(libs.androidx.room.runtime)`. El resultado es el mismo; el catálogo solo centraliza las versiones en un único fichero.
+:::
 
 ## Dispatchers en Android
 
@@ -149,10 +162,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun UserScreen(viewModel: UserViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     // LaunchedEffect con key
     LaunchedEffect(key1 = Unit) {
@@ -252,7 +266,7 @@ fun TimerScreen() {
 
 ### collectAsStateWithLifecycle
 
-Recolecta un Flow respetando el ciclo de vida:
+Recolecta un Flow respetando el ciclo de vida. Es la opción recomendada en Android frente a `collectAsState()`, porque deja de recolectar cuando la app pasa a segundo plano y así no se malgastan recursos:
 
 ```kotlin
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -362,7 +376,7 @@ data class TaskUiState(
 )
 
 sealed class TaskEvent {
-    object LoadTasks : TaskEvent()
+    data object LoadTasks : TaskEvent()
     data class SelectTask(val task: Task) : TaskEvent()
     data class ToggleTaskCompletion(val task: Task) : TaskEvent()
     data class DeleteTask(val taskId: Int) : TaskEvent()
@@ -379,6 +393,10 @@ class TaskViewModel(
     init {
         loadTasks()
     }
+
+    // Nota: _uiState.value = _uiState.value.copy(...) lee y escribe en dos pasos.
+    // Si varias corrutinas pueden modificar el estado a la vez, es más seguro usar
+    // _uiState.update { it.copy(...) }, que realiza la operación de forma atómica.
     
     fun onEvent(event: TaskEvent) {
         when (event) {
@@ -466,8 +484,12 @@ class TaskViewModel(
 ### 5. UI con Compose
 
 ```kotlin title="ui/TaskScreen.kt"
+// TaskViewModel recibe un repositorio en su constructor, así que para crearlo con
+// viewModel() haría falta una factoría (o un inyector de dependencias como Hilt o Koin).
+// Para simplificar, aquí lo recibimos como parámetro.
+@OptIn(ExperimentalMaterial3Api::class) // TopAppBar sigue siendo experimental en Material 3
 @Composable
-fun TaskScreen(viewModel: TaskViewModel = viewModel()) {
+fun TaskScreen(viewModel: TaskViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     
@@ -667,7 +689,7 @@ fun ErrorView(error: String, onRetry: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            Icons.Default.Error,
+            Icons.Default.Warning,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.error
@@ -787,7 +809,7 @@ WorkManager.getInstance(context).enqueue(syncWorkRequest)
 ```kotlin
 sealed class UiEvent {
     data class ShowSnackbar(val message: String) : UiEvent()
-    object NavigateBack : UiEvent()
+    data object NavigateBack : UiEvent()
 }
 
 class MyViewModel : ViewModel() {
@@ -874,7 +896,7 @@ class SearchViewModel : ViewModel() {
 4. **Usa Dispatchers apropiados**: Main para UI, IO para red/BD
 5. **Cancela corrutinas**: Aprovecha la cancelación automática de scopes
 6. **Evita GlobalScope**: Siempre usa scopes estructurados
-7. **StateFlow para estado**: Mejor que LiveData para Compose
+7. **StateFlow para estado**: Es la opción recomendada actualmente frente a `LiveData`, especialmente con Compose (y funciona también en Kotlin Multiplatform)
 8. **Channel para eventos únicos**: Snackbars, navegación, etc.
 
 ## Conclusión

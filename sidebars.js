@@ -3,7 +3,7 @@ const sidebars = {
   // Sidebar principal con índice y resumen de todos los temas
   mainSidebar: [
     'index',
-    'formato-entregas'
+    'erratas',
   ],
 
   //Sidebar especifico para Tema 0 - Autogenerado

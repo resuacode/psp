@@ -363,6 +363,9 @@ val singleThread = Executors.newSingleThreadExecutor()
 
 // Pool para tareas programadas
 val scheduledPool = Executors.newScheduledThreadPool(2)
+
+// Un hilo virtual nuevo por cada tarea (Java 21+)
+val virtualExecutor = Executors.newVirtualThreadPerTaskExecutor()
 ```
 
 ### Ejemplo con ScheduledExecutorService
@@ -389,6 +392,54 @@ fun main() {
     scheduler.shutdown()
 }
 ```
+
+## Hilos virtuales (Java 21+)
+
+Desde Java 21, la JVM incluye **hilos virtuales** (*virtual threads*, fruto del proyecto Loom). Son hilos muy ligeros gestionados por la JVM en lugar de por el sistema operativo: se pueden crear cientos de miles sin agotar la memoria, porque muchos hilos virtuales comparten un pequeño grupo de hilos del sistema operativo (llamados *carrier threads*).
+
+Se usan con la misma API de `Thread`, así que todo lo visto hasta ahora (`join()`, `interrupt()`, sincronización…) sigue siendo válido:
+
+```kotlin
+fun main() {
+    // Crear e iniciar un hilo virtual
+    val hilo = Thread.ofVirtual().name("virtual-1").start {
+        println("Ejecutando en: ${Thread.currentThread()} (virtual: ${Thread.currentThread().isVirtual})")
+    }
+    hilo.join()
+
+    // Equivalente abreviado
+    Thread.startVirtualThread { println("Otro hilo virtual") }.join()
+}
+```
+
+Donde más se aprovechan es con un `ExecutorService` que crea **un hilo virtual por tarea**. Como no hay que limitar el número de hilos, no hace falta dimensionar un pool:
+
+```kotlin
+import java.util.concurrent.Executors
+
+fun main() {
+    val inicio = System.currentTimeMillis()
+
+    // ExecutorService es AutoCloseable desde Java 19: use() espera a que terminen todas las tareas
+    Executors.newVirtualThreadPerTaskExecutor().use { executor ->
+        repeat(10_000) {
+            executor.execute {
+                Thread.sleep(1000) // Simula una operación de E/S bloqueante
+            }
+        }
+    }
+
+    println("10.000 tareas completadas en ${System.currentTimeMillis() - inicio} ms")
+}
+```
+
+Con 10.000 hilos de plataforma este programa consumiría muchísima memoria; con hilos virtuales termina en poco más de un segundo.
+
+:::tip ¿Cuándo usar hilos virtuales?
+- **Sí**: tareas que pasan la mayor parte del tiempo **esperando** E/S (red, ficheros, bases de datos), como un servidor que atiende a muchos clientes.
+- **No aportan ventaja**: tareas intensivas en CPU (cálculos). Para eso el número de hilos útiles está limitado por el número de núcleos y es mejor usar un pool fijo (`newFixedThreadPool`).
+- No hay que reutilizarlos ni meterlos en pools: se crea uno nuevo por tarea.
+:::
 
 ## Introducción a las Corrutinas de Kotlin
 
@@ -423,7 +474,7 @@ fun main() = runBlocking {
 ## Buenas prácticas
 
 1. **Nombra tus hilos**: Facilita la depuración y el seguimiento
-2. **Usa pools de hilos**: Para aplicaciones que crean muchos hilos
+2. **Usa pools de hilos o hilos virtuales**: Para aplicaciones que crean muchos hilos
 3. **Maneja excepciones**: Los hilos deben manejar sus propias excepciones
 4. **Limpia recursos**: Asegúrate de cerrar recursos en bloques `finally`
 5. **Evita crear demasiados hilos**: Cada hilo consume recursos del sistema

@@ -2,7 +2,7 @@ import CodeBlock from '@theme/CodeBlock';
 
 # Sets en Kotlin
 
-En Kotlin, un `Set` es una colección de elementos únicos, lo que significa que no puede contener elementos duplicados. Los `Set` en Kotlin son inmutables por defecto, lo que significa que no puedes modificar su tamaño una vez que se han creado.
+En Kotlin, un `Set` es una colección de elementos únicos, lo que significa que no puede contener elementos duplicados. Los `Set` creados con `setOf()` son de **solo lectura**: no se pueden añadir ni eliminar elementos.
 
 ```kotlin
 val numeros = setOf(1, 2, 3, 4, 5)
@@ -12,11 +12,11 @@ En el ejemplo anterior, se crea un `Set` `numeros` con los valores `1, 2, 3, 4, 
 
 ## Acceso a elementos de un Set
 
-Puedes acceder a elementos individuales de un `Set` utilizando la función `contains()` para comprobar si un elemento está presente en el `Set`.
+Los `Set` no tienen índices, así que no se accede a sus elementos por posición. Lo habitual es comprobar si un elemento está presente con la función `contains()` o con el operador `in`.
 
 ```kotlin
 val contieneTres = numeros.contains(3)
-val contieneSeis = numeros.contains(6)
+val contieneSeis = 6 in numeros // Equivale a numeros.contains(6)
 ```
 
 En el ejemplo anterior, se comprueba si el `Set` `numeros` contiene los elementos `3` y `6` utilizando la función `contains()`.
@@ -37,21 +37,19 @@ numeros.forEach { numero ->
 
 En el ejemplo anterior, se itera sobre los elementos del `Set` `numeros` utilizando un bucle `for` y la función `forEach()`.
 
-## Sets de tipos primitivos
-
-En Kotlin, puedes utilizar `Set` de tipos primitivos como `IntSet`, `DoubleSet`, `BooleanSet`, etc. para mejorar el rendimiento de tu código.
+:::tip[Eliminar duplicados]
+Una forma rápida de quitar los elementos repetidos de una lista es convertirla en un `Set` con `toSet()`, o usar directamente `distinct()` si queremos seguir teniendo una lista:
 
 ```kotlin
-val enteros = intSetOf(1, 2, 3, 4, 5)
-val dobles = doubleSetOf(1.0, 2.0, 3.0, 4.0, 5.0)
-val booleanos = booleanSetOf(true, false, true, false)
+val repetidos = listOf(1, 2, 2, 3, 3, 3)
+println(repetidos.toSet())     // [1, 2, 3]
+println(repetidos.distinct())  // [1, 2, 3]
 ```
-
-En el ejemplo anterior, se crean `Set` de tipos primitivos `IntSet`, `DoubleSet` y `BooleanSet` con valores iniciales.
+:::
 
 ## Modificación de elementos de un Set
 
-Los `Set` en Kotlin son inmutables por defecto, por lo que no puedes modificar los elementos de un `Set` una vez que se ha creado. Si necesitas un `Set` mutable, puedes utilizar la función `mutableSetOf()`.
+Los `Set` creados con `setOf()` son de solo lectura, por lo que no puedes añadir ni eliminar elementos. Si necesitas un `Set` mutable, puedes utilizar la función `mutableSetOf()`.
 
 ```kotlin
 val numeros = mutableSetOf(1, 2, 3, 4, 5)
@@ -75,7 +73,7 @@ val contieneTodos = numeros.containsAll(numerosPares)
 val esVacio = numeros.isEmpty()
 ```
 
-En el ejemplo anterior, se utilizan las operaciones `union()` e `intersect()` para realizar operaciones comunes con los `Set` `numeros`, `numerosPares` y `numerosImpares`.
+En el ejemplo anterior, se utilizan las operaciones `union()`, `intersect()`, `subtract()`, `containsAll()` e `isEmpty()` con los `Set` `numeros`, `numerosPares` y `numerosImpares`.
 
 Estas operaciones sirven para lo siguiente:
 

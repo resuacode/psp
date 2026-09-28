@@ -10,7 +10,7 @@ En Kotlin, puedes utilizar genéricos para crear clases, funciones e interfaces 
 
 ## Clases genéricas
 
-En Kotlin, puedes crear clases genéricas utilizando la palabra clave `class` seguida de los parámetros de tipo entre corchetes `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la clase puede manejar.
+En Kotlin, puedes crear clases genéricas utilizando la palabra clave `class` seguida de los parámetros de tipo entre los símbolos `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la clase puede manejar.
 
 ```kotlin
 class Caja<T>(val contenido: T) {
@@ -32,7 +32,7 @@ Se crean dos instancias de la clase `Caja` con tipos de datos diferentes: una co
 
 ## Funciones genéricas
 
-En Kotlin, puedes crear funciones genéricas utilizando la palabra clave `fun` seguida de los parámetros de tipo entre corchetes `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la función puede manejar.
+En Kotlin, puedes crear funciones genéricas utilizando la palabra clave `fun` seguida de los parámetros de tipo entre los símbolos `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la función puede manejar.
 
 ```kotlin
 fun <T> imprimirElemento(elemento: T) {
@@ -47,7 +47,7 @@ En el ejemplo anterior, se define una función genérica `imprimirElemento` que 
 
 ## Interfaces genéricas
 
-En Kotlin, puedes crear interfaces genéricas utilizando la palabra clave `interface` seguida de los parámetros de tipo entre corchetes `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la interfaz puede manejar.
+En Kotlin, puedes crear interfaces genéricas utilizando la palabra clave `interface` seguida de los parámetros de tipo entre los símbolos `<>`. Los parámetros de tipo se utilizan para definir los tipos de datos que la interfaz puede manejar.
 
 ```kotlin
 interface Contenedor<T> {
@@ -80,31 +80,42 @@ interface Contenedor<out T> {
     fun obtenerContenido(): T
 }
 
-class Caja<in T>(val contenido: T) {
-    fun ponerContenido(nuevoContenido: T) {
-        // ...
-    }
+interface Comparador<in T> {
+    fun comparar(a: T, b: T): Int
 }
+
+val contenedorTexto: Contenedor<String> = object : Contenedor<String> {
+    override fun obtenerContenido() = "Hola"
+}
+val contenedorGeneral: Contenedor<Any> = contenedorTexto // Válido gracias a `out`
 ```
 
-En el ejemplo anterior, se define una interfaz `Contenedor` con un parámetro de tipo `T` que solo se utiliza en posiciones de salida. La clase `Caja` tiene un parámetro de tipo `T` que solo se utiliza en posiciones de entrada.
+En el ejemplo anterior, se define una interfaz `Contenedor` con un parámetro de tipo `T` que solo se utiliza en posiciones de salida (valores de retorno). Gracias a `out`, un `Contenedor<String>` puede usarse donde se espera un `Contenedor<Any>` (**covarianza**).
+
+La interfaz `Comparador` tiene un parámetro de tipo `T` que solo se utiliza en posiciones de entrada (parámetros). Gracias a `in`, un `Comparador<Any>` puede usarse donde se espera un `Comparador<String>` (**contravarianza**).
+
+:::tip[Ejemplos de la librería estándar]
+`List<out E>` es covariante: una `List<String>` es también una `List<Any>`. Las interfaces `Comparable<in T>` y `Comparator<in T>` son contravariantes.
+:::
 
 ## Restricciones en genéricos
 
 En Kotlin, puedes utilizar restricciones para limitar los tipos de datos que se pueden utilizar en clases y funciones genéricas. Puedes utilizar restricciones para garantizar que los tipos de datos cumplan ciertos requisitos.
 
 ```kotlin
-fun <T : Number> sumar(a: T, b: T): T {
-    return a + b
+fun <T : Number> sumar(a: T, b: T): Double {
+    return a.toDouble() + b.toDouble()
 }
 
-val resultadoEntero = sumar(1, 2)
-val resultadoFlotante = sumar(1.5, 2.5)
+val resultadoEntero = sumar(1, 2)        // 3.0
+val resultadoDecimal = sumar(1.5, 2.5)   // 4.0
 ```
 
-En el ejemplo anterior, se define una función `sumar` que toma dos parámetros de tipo `T` que deben ser subtipos de `Number`. La función `sumar` devuelve la suma de los dos parámetros.
+En el ejemplo anterior, se define una función `sumar` que toma dos parámetros de tipo `T` que deben ser subtipos de `Number` (`Int`, `Long`, `Double`, etc.). Gracias a esta restricción, dentro de la función podemos llamar a los métodos de `Number`, como `toDouble()`.
 
-Se llama a la función `sumar` con un entero y un flotante como argumentos, y se asigna el resultado a variables de tipo `Int` y `Float`.
+:::warning[`Number` no tiene operador `+`]
+No podríamos escribir directamente `a + b`, porque la clase `Number` no define el operador de suma: solo lo tienen los tipos concretos (`Int`, `Double`…). Por eso convertimos ambos valores a `Double` antes de sumarlos.
+:::
 
 ## Genéricos en clases y funciones
 
@@ -125,8 +136,8 @@ interface Contenedor<T> {
     fun obtenerContenido(): T
 }
 
-fun <T : Number> sumar(a: T, b: T): T {
-    return a + b
+fun <T : Number> sumar(a: T, b: T): Double {
+    return a.toDouble() + b.toDouble()
 }
 ```
 
@@ -136,4 +147,4 @@ En el ejemplo anterior, se muestran ejemplos de clases genéricas, funciones gen
 
 - [Documentación oficial de Kotlin sobre genéricos](https://kotlinlang.org/docs/generics.html)
 - [Tutorial de Kotlin sobre genéricos](https://play.kotlinlang.org/byExample/01_introduction/06_Generics)
-- [Ejemplos de genéricos en Kotlin](https://github.com/resuadam2/kotlin-apuntes/blob/main/src/main/kotlin/p2_oop/Generics.kt)
+- [Ejemplos de genéricos en Kotlin](https://github.com/resuacode/kotlin-apuntes/blob/main/src/main/kotlin/p2_oop/Generics.kt)

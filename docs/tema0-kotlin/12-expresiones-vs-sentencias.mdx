@@ -32,6 +32,22 @@ if (numero > 0) {
 
 En el ejemplo anterior, la sentencia `if (numero > 0) { ... } else { ... }` es una estructura de control de flujo que toma una decisión basada en la condición `numero > 0`. La sentencia `if` evalúa la condición y ejecuta el bloque de código correspondiente si la condición es verdadera.  
 
+:::info[En Kotlin, `if`, `when` y `try` también son expresiones]
+A diferencia de Java, en Kotlin `if`, `when` y `try` pueden usarse como expresiones y devolver un valor. Por eso Kotlin no tiene operador ternario (`condicion ? a : b`): no lo necesita.
+
+```kotlin
+val mensaje = if (numero > 0) "El número es positivo" else "El número es negativo o cero"
+
+val tipo = when {
+    numero < 0 -> "negativo"
+    numero == 0 -> "cero"
+    else -> "positivo"
+}
+```
+
+Las asignaciones (`x = 5`) y los bucles (`for`, `while`), en cambio, sí son siempre sentencias.
+:::
+
 ## Diferencias entre expresiones y sentencias
 
 Las principales diferencias entre expresiones y sentencias en Kotlin son las siguientes:
@@ -47,7 +63,7 @@ En la programación funcional, se fomenta el uso de expresiones en lugar de sent
 
 Al utilizar expresiones en lugar de sentencias, se puede escribir menos código y hacer más cosas.
 
-Esto es especialmente útil en Kotlin, que es un lenguaje de programación funcional que fomenta el uso de expresiones para realizar operaciones y producir resultados de forma concisa y eficiente.
+Esto es especialmente útil en Kotlin, un lenguaje multiparadigma (orientado a objetos y funcional) que fomenta el uso de expresiones para realizar operaciones y producir resultados de forma concisa y eficiente.
 :::
 
 ### Ejemplo de una función que usa sentencias (statement) y expresiones (expression)

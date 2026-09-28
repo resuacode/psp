@@ -59,12 +59,21 @@ En la siguiente tabla podemos ver los métodos más relevantes de la clase para 
 | Método                     | Descripción                                                  |
 |----------------------------|--------------------------------------------------------------|
 | `waitFor()`                | Espera a que el proceso termine y devuelve su código de salida. |
+| `waitFor(timeout, unit)`   | Espera como máximo el tiempo indicado; devuelve `true` si el proceso terminó. |
 | `getInputStream()`         | Devuelve un flujo de entrada para leer la salida del proceso. |
 | `getErrorStream()`         | Devuelve un flujo de entrada para leer los errores del proceso. |
-| `destroy()`                | Termina el proceso de forma abrupta.                         |
+| `getOutputStream()`        | Devuelve un flujo de salida para escribir en la entrada estándar del proceso. |
+| `destroy()`                | Solicita la finalización del proceso (en Linux envía `SIGTERM`). |
+| `destroyForcibly()`        | Fuerza la finalización inmediata del proceso (en Linux envía `SIGKILL`). |
 | `isAlive()`                | Devuelve true si el proceso aún está en ejecución.           |
-| `getOutputStream()`        | Devuelve un flujo de salida para escribir en el proceso.     |
-| `exitValue()`              | Devuelve el código de salida del proceso.                    |
+| `exitValue()`              | Devuelve el código de salida (lanza excepción si aún no ha terminado). |
+| `pid()`                    | Devuelve el identificador (PID) del proceso.                 |
+| `toHandle()`               | Devuelve el `ProcessHandle` asociado al proceso.             |
+| `onExit()`                 | Devuelve un `CompletableFuture<Process>` que se completa al terminar el proceso. |
+
+:::info Propiedades en Kotlin
+Desde Kotlin, los métodos Java `getXxx()` se pueden usar como propiedades: `process.inputStream` equivale a `process.getInputStream()`, y `process.isAlive` a `process.isAlive()`.
+:::
 
 Veamos una serie de ejemplos, en este primer ejemplo crearemos un proceso que ejecuta el comando `ps` para listar los procesos en ejecución.
 
@@ -276,7 +285,7 @@ import java.io.InputStreamReader
 
 fun main() {
     try {
-        val process = Runtime.getRuntime().exec("ls -l")
+        val process = Runtime.getRuntime().exec(arrayOf("ls", "-l"))
         val reader = BufferedReader(InputStreamReader(process.inputStream))
         var line: String?
         while (reader.readLine().also { line = it } != null) {
@@ -291,9 +300,13 @@ fun main() {
 ```
 
 :::info `ProcessBuilder` vs `Runtime`
-La principal diferencia entre `ProcessBuilder` y `Runtime` radica en el nivel de control que ofrecen sobre el proceso. `ProcessBuilder` permite una configuración más detallada del entorno del proceso, incluyendo la redirección de flujos de entrada/salida y la modificación del entorno del proceso. Por otro lado, `Runtime` es más simple y directo, pero ofrece menos opciones de configuración.
+La principal diferencia entre `ProcessBuilder` y `Runtime` radica en el nivel de control que ofrecen sobre el proceso. De hecho, internamente `Runtime.exec()` crea un `ProcessBuilder`. `ProcessBuilder` permite una configuración más detallada del entorno del proceso, incluyendo la redirección de flujos de entrada/salida y la modificación del entorno del proceso. Por otro lado, `Runtime` es más simple y directo, pero ofrece menos opciones de configuración.
 
 La decisión de cuándo utilizar una opción u otra depende de los requisitos específicos de la aplicación. Si se necesita un control fino sobre el proceso y su entorno, `ProcessBuilder` es la mejor opción. Si se busca una solución rápida y sencilla, `Runtime` puede ser suficiente.
+:::
+
+:::warning `exec(String)` está obsoleto
+La versión `Runtime.exec(String)`, que recibe el comando completo en una sola cadena, está marcada como obsoleta (*deprecated*) desde Java 18, porque divide el texto por espacios y falla con rutas o argumentos que los contienen. Hay que usar la versión que recibe un array (`exec(arrayOf("ls", "-l"))`) o, mejor aún, `ProcessBuilder`.
 :::
 
 ### La clase ``ProcessHandle`` 
@@ -331,8 +344,10 @@ Los métodos más utilizados de la clase `ProcessHandle` son los que podemos enc
 | `isAlive()`                  | Devuelve true si el proceso aún está en ejecución.           |
 | `info()`                     | Devuelve un objeto `ProcessHandle.Info` con información sobre el proceso. |
 | `children()`                 | Devuelve un flujo de los procesos hijos del proceso.        |
+| `descendants()`              | Devuelve un flujo con todos los descendientes (hijos, nietos…). |
 | `parent()`                   | Devuelve un `Optional<ProcessHandle>` con el proceso padre, si existe. |
-| `destroy()`                  | Termina el proceso de forma abrupta.                         |
+| `destroy()`                  | Solicita la finalización del proceso.                        |
+| `destroyForcibly()`          | Fuerza la finalización inmediata del proceso.                |
 | `onExit()`                   | Devuelve un `CompletableFuture<ProcessHandle>` que se completa cuando el proceso termina. |    
 
 Aquí hay un ejemplo de cómo usar algunos de estos métodos:
@@ -350,72 +365,83 @@ fun main() {
         println("Proceso iniciado con PID: ${processHandle.pid()}")
         println("¿El proceso está vivo? ${processHandle.isAlive()}")
         val info = processHandle.info()
-        println("Información del proceso: $info")
+        println("Comando: ${info.command().orElse("desconocido")}")
+        println("Usuario: ${info.user().orElse("desconocido")}")
+        println("Inicio: ${info.startInstant().orElse(null)}")
         // Esperar a que el proceso termine
         val exitCode = process.waitFor()
         println("Proceso terminado con código de salida: $exitCode")
     } catch (e: Exception) {
         e.printStackTrace()
     }
+}
+```
+
+`ProcessHandle` también permite consultar procesos que no hemos lanzado nosotros. Por ejemplo, podemos obtener el proceso actual o recorrer todos los procesos del sistema:
+
+```kotlin
+fun main() {
+    val actual = ProcessHandle.current()
+    println("PID de esta JVM: ${actual.pid()}")
+
+    ProcessHandle.allProcesses()
+        .filter { it.info().command().isPresent }
+        .limit(10)
+        .forEach { println("${it.pid()} -> ${it.info().command().get()}") }
 }
 ```
 
 ### Lanzamiento de procesos en segundo plano
 
-Para lanzar un proceso en segundo plano, podemos utilizar la clase `ProcessBuilder` y redirigir la salida del proceso a un archivo o a `/dev/null` en sistemas Unix. Aquí hay un ejemplo de cómo hacerlo:
+Lanzar un proceso en segundo plano significa que el programa padre **no se queda esperando** a que termine: sigue trabajando y, si le interesa, recibe un aviso cuando el hijo acaba. Si no nos interesa su salida, podemos descartarla con `ProcessBuilder.Redirect.DISCARD` (equivale a redirigir a `/dev/null` en Unix o a `NUL` en Windows):
 
 ```kotlin
-import java.io.File
-import java.lang.ProcessBuilder
-
 fun main() {
-    // Crear un proceso para ejecutar el comando 'sleep 10'
-    val processBuilder = ProcessBuilder("sleep", "10")
-    processBuilder.redirectOutput(File("/dev/null")) // Redirigir la salida a /dev/null
-    processBuilder.redirectError(File("/dev/null")) // Redirigir los errores a /dev/null
-    try {
-        val process = processBuilder.start() // Iniciar el proceso
-        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
-        println("Proceso iniciado con PID: ${processHandle.pid()}")
-        println("¿El proceso está vivo? ${processHandle.isAlive()}")
-        val info = processHandle.info()
-        println("Información del proceso: $info")
-        // Esperar a que el proceso termine
-        val exitCode = process.waitFor()
-        println("Proceso terminado con código de salida: $exitCode")
-    } catch (e: Exception) {
-        e.printStackTrace()
+    val process = ProcessBuilder("sleep", "5")
+        .redirectOutput(ProcessBuilder.Redirect.DISCARD) // Descartar la salida
+        .redirectError(ProcessBuilder.Redirect.DISCARD)  // Descartar los errores
+        .start()
+
+    println("Proceso iniciado en segundo plano con PID: ${process.pid()}")
+
+    // Registrar qué hacer cuando termine, sin bloquear al padre
+    process.onExit().thenAccept { p ->
+        println("El proceso ${p.pid()} ha terminado con código ${p.exitValue()}")
     }
+
+    // Mientras tanto, el programa padre sigue trabajando
+    repeat(3) { i ->
+        println("El padre sigue trabajando... ($i)")
+        Thread.sleep(1000)
+    }
+
+    process.waitFor() // Solo para que el ejemplo no termine antes que el hijo
 }
 ```
-En este ejemplo, creamos un proceso que ejecuta el comando `sleep 10` y redirigimos su salida y errores a `/dev/null`, lo que permite que el proceso se ejecute en segundo plano sin mostrar salida en la consola.
+En este ejemplo, el proceso `sleep 5` se ejecuta en segundo plano mientras el padre sigue mostrando mensajes. Con `onExit()` registramos una acción que se ejecutará cuando el hijo termine, sin necesidad de bloquear al padre con `waitFor()`.
 
 ### Lanzamiento de procesos en primer plano
 
-Para lanzar un proceso en primer plano, simplemente no redirigimos su salida. Aquí hay un ejemplo de cómo hacerlo:
+Lanzar un proceso en primer plano significa que el programa padre **espera a que termine** antes de continuar. Si además queremos que el proceso hijo use directamente la consola del padre (para mostrar su salida o leer del teclado), podemos usar `inheritIO()`:
 
 ```kotlin
-import java.lang.ProcessBuilder
-
 fun main() {
-    // Crear un proceso para ejecutar el comando 'sleep 10'
-    val processBuilder = ProcessBuilder("sleep", "10")
-    try {
-        val process = processBuilder.start() // Iniciar el proceso
-        val processHandle = process.toHandle() // Obtener el ProcessHandle del proceso
-        println("Proceso iniciado con PID: ${processHandle.pid()}")
-        println("¿El proceso está vivo? ${processHandle.isAlive()}")
-        val info = processHandle.info()
-        println("Información del proceso: $info")
-        // Esperar a que el proceso termine
-        val exitCode = process.waitFor()
-        println("Proceso terminado con código de salida: $exitCode")
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
+    val process = ProcessBuilder("ping", "-c", "3", "localhost")
+        .inheritIO() // El hijo escribe directamente en la consola del padre
+        .start()
+
+    println("Proceso iniciado con PID: ${process.pid()}")
+
+    // El padre se bloquea hasta que el hijo termine
+    val exitCode = process.waitFor()
+    println("Proceso terminado con código de salida: $exitCode")
 }
 ```
-En este ejemplo, creamos un proceso que ejecuta el comando `sleep 10` y no redirigimos su salida, lo que permite que el proceso se ejecute en primer plano y muestre su salida en la consola.
+En este ejemplo, la salida de `ping` aparece directamente en la consola y el padre no continúa hasta que el proceso termina.
+
+:::warning Leer siempre la salida o redirigirla
+Si un proceso hijo escribe mucho en su salida y nadie la lee (ni se redirige ni se hereda), el búfer del sistema operativo se llena y el hijo se queda **bloqueado** para siempre. Por eso, siempre hay que leer `inputStream`/`errorStream`, redirigirlos a un fichero, descartarlos (`Redirect.DISCARD`) o heredarlos (`inheritIO()`).
+:::
 
 ### Ejecución de programas o scripts externos
 
@@ -582,139 +608,151 @@ Veremos más en detalle la programación de sockets en el tema 3. En este tema, 
 
 ### Memoria compartida
 
-Otra opción de comunicación entre procesos es la memoria compartida. Al utilizar memoria compartida, varios procesos pueden acceder a la misma región de memoria, lo que facilita la comunicación rápida entre ellos.
+Otra opción de comunicación entre procesos es la memoria compartida. Al utilizar memoria compartida, varios procesos pueden acceder a la misma región de memoria, lo que facilita la comunicación rápida entre ellos, ya que los datos no tienen que copiarse de un proceso a otro.
 
-Aquí hay un ejemplo de cómo usar memoria compartida en Kotlin:
+En sistemas operativos como Linux, la memoria compartida se gestiona con llamadas al sistema como `shmget`/`shmat` o `shm_open`/`mmap`. La JVM no permite usar esas llamadas directamente, pero sí ofrece **ficheros mapeados en memoria** (`MappedByteBuffer`): el sistema operativo carga el fichero en memoria y todos los procesos que lo mapean comparten las mismas páginas. Es la forma habitual de usar memoria compartida desde Java y Kotlin.
 
-```kotlin
-import kotlinx.cinterop.*
-import platform.posix.*
+Aquí hay un ejemplo con dos programas: uno escribe en la memoria compartida y otro lee de ella.
+
+```kotlin title="Escritor.kt"
+import java.nio.channels.FileChannel
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption.*
 
 fun main() {
-    // Crear un segmento de memoria compartida
-    val shm = shmget(IPC_PRIVATE, 1024, IPC_CREAT or 0666)
-    if (shm == -1) {
-        perror("shmget")
-        return
+    val fichero = Path.of("/tmp/memoria_compartida.dat")
+
+    FileChannel.open(fichero, CREATE, READ, WRITE).use { canal ->
+        // Mapear 1024 bytes del fichero en memoria
+        val memoria = canal.map(FileChannel.MapMode.READ_WRITE, 0, 1024)
+
+        val mensaje = "Hola desde la memoria compartida".toByteArray()
+        memoria.putInt(0, mensaje.size)     // Primero la longitud del mensaje
+        memoria.put(4, mensaje)             // Después el contenido
+        println("Mensaje escrito en la memoria compartida")
     }
-
-    // Adjuntar el segmento de memoria compartida
-    val data = shmat(shm, null, 0)
-    if (data == -1) {
-        perror("shmat")
-        return
-    }
-
-    // Escribir en la memoria compartida
-    memScoped {
-        val str = "Hola desde la memoria compartida"
-        memcpy(data, str.cstr, str.length + 1)
-    }
-
-    // Leer de la memoria compartida
-    println("Leído de la memoria compartida: ${data?.toKString()}")
-
-    // Detach y eliminar el segmento de memoria compartida
-    shmdt(data)
-    shmctl(shm, IPC_RMID, null)
 }
 ```
 
-El método `shmget` se utiliza para crear un nuevo segmento de memoria compartida o acceder a uno existente. Devuelve un identificador de segmento que se puede utilizar para operaciones posteriores en ese segmento.
+```kotlin title="Lector.kt"
+import java.nio.channels.FileChannel
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption.READ
 
-El método `shmat` se utiliza para adjuntar el segmento de memoria compartida a la dirección de espacio de direcciones del proceso. Devuelve un puntero a la memoria compartida, que se puede utilizar para leer y escribir datos.
+fun main() {
+    val fichero = Path.of("/tmp/memoria_compartida.dat")
 
-Por su parte, el método `shmdt` se utiliza para desadjuntar el segmento de memoria compartida del espacio de direcciones del proceso.
+    FileChannel.open(fichero, READ).use { canal ->
+        val memoria = canal.map(FileChannel.MapMode.READ_ONLY, 0, 1024)
 
-También tenemos `shmctl`, que sirve para realizar operaciones de control en el segmento de memoria compartida, como eliminarlo o cambiar sus permisos.
+        val longitud = memoria.getInt(0)
+        val bytes = ByteArray(longitud)
+        memoria.get(4, bytes)
+        println("Leído de la memoria compartida: ${String(bytes)}")
+    }
+}
+```
 
-En el ejemplo anterior, se crea un segmento de memoria compartida, se adjunta a la dirección de espacio de direcciones del proceso, se escribe en él y se lee de él. Finalmente, se desadjunta y se elimina el segmento de memoria compartida.
+Si ejecutamos primero `Escritor` y después `Lector` (son dos procesos distintos, dos JVM diferentes), el lector obtiene el mensaje que dejó el escritor.
+
+:::warning La memoria compartida necesita sincronización
+Si varios procesos leen y escriben a la vez en la misma zona de memoria, pueden producirse condiciones de carrera. En un caso real, el acceso debería protegerse, por ejemplo, con un bloqueo de fichero (`FileChannel.lock()`), que veremos en el siguiente apartado.
+:::
 
 ## Sincronización de Procesos
 
-La sincronización de procesos se refiere a la coordinación de la ejecución de múltiples procesos para garantizar que accedan a recursos compartidos de manera controlada y evitar condiciones de carrera. Existen varias técnicas para lograr la sincronización entre procesos, incluyendo semáforos, mutexes y monitores.
+La sincronización de procesos se refiere a la coordinación de la ejecución de múltiples procesos para garantizar que accedan a recursos compartidos de manera controlada y evitar condiciones de carrera. Existen varias técnicas para lograr la sincronización, incluyendo semáforos, mutexes y monitores.
+
+:::info Procesos e hilos en los ejemplos
+Los semáforos, mutexes y monitores son conceptos generales que el sistema operativo ofrece tanto para procesos como para hilos. Sin embargo, las clases de Java/Kotlin que los implementan (`Semaphore`, `ReentrantLock`…) solo funcionan **dentro de una misma JVM**, es decir, entre hilos. Por eso, en los siguientes ejemplos usaremos hilos para simular procesos concurrentes. Los hilos se estudian en profundidad en el Tema 2.
+
+Para sincronizar **procesos distintos** desde la JVM, la herramienta más habitual es el bloqueo de ficheros (`FileChannel.lock()`), que veremos al final de este apartado.
+:::
 
 Veamos cada una de estas técnicas algo más en detalle.
 
 ### Semáforos
 
-Los semáforos son variables utilizadas para controlar el acceso a recursos compartidos mediante la sincronización de procesos. Un semáforo puede tener dos estados: disponible (valor 1) o no disponible (valor 0). Cuando un proceso quiere acceder a un recurso, debe esperar hasta que el semáforo esté disponible.
+Un semáforo es un contador que controla cuántos procesos o hilos pueden acceder a la vez a un recurso compartido. Tiene dos operaciones básicas:
+
+- **`acquire()`** (también llamada *wait* o *P*): si el contador es mayor que 0, lo decrementa y continúa; si es 0, se bloquea hasta que otro libere un permiso.
+- **`release()`** (también llamada *signal* o *V*): incrementa el contador y despierta a alguno de los que estaban esperando.
+
+Un semáforo inicializado a 1 (**semáforo binario**) solo deja pasar a uno a la vez; uno inicializado a N permite N accesos simultáneos.
 
 Aquí hay un ejemplo de cómo usar semáforos en Kotlin:
 
 ```kotlin
-import kotlinx.coroutines.*
 import java.util.concurrent.Semaphore
+import kotlin.concurrent.thread
 
-fun main() = runBlocking {
-    val semaphore = Semaphore(1)
+fun main() {
+    val semaphore = Semaphore(1) // Semáforo binario
 
-    launch {
-        semaphore.acquire()
-        println("Proceso 1: Accediendo al recurso compartido")
-        delay(1000)
-        println("Proceso 1: Liberando el recurso compartido")
-        semaphore.release()
+    val tareas = (1..2).map { id ->
+        thread {
+            semaphore.acquire()
+            try {
+                println("Proceso $id: Accediendo al recurso compartido")
+                Thread.sleep(1000)
+                println("Proceso $id: Liberando el recurso compartido")
+            } finally {
+                semaphore.release() // Liberar siempre, aunque haya una excepción
+            }
+        }
     }
-
-    launch {
-        semaphore.acquire()
-        println("Proceso 2: Accediendo al recurso compartido")
-        delay(1000)
-        println("Proceso 2: Liberando el recurso compartido")
-        semaphore.release()
-    }
+    tareas.forEach { it.join() }
 }
 ```
 
 ### Mutexes
 
-Los mutexes (mutual exclusion) son similares a los semáforos, pero están diseñados específicamente para garantizar que solo un proceso pueda acceder a un recurso compartido en un momento dado. Un mutex puede estar bloqueado o desbloqueado. Cuando un proceso bloquea un mutex, otros procesos deben esperar hasta que el mutex sea desbloqueado.
+Los mutexes (*mutual exclusion*) son similares a un semáforo binario, pero con una diferencia importante: el mutex tiene **propietario**. Solo quien lo ha bloqueado puede desbloquearlo. Un mutex puede estar bloqueado o desbloqueado; cuando alguien lo bloquea, los demás deben esperar hasta que sea desbloqueado.
 
 Aquí hay un ejemplo de cómo usar mutexes en Kotlin:
 
 ```kotlin
-import kotlinx.coroutines.*
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
 
-fun main() = runBlocking {
+fun main() {
     val lock = ReentrantLock()
 
-    launch {
-        lock.withLock {
-            println("Proceso 1: Accediendo al recurso compartido")
-            delay(1000)
-            println("Proceso 1: Liberando el recurso compartido")
+    val tareas = (1..2).map { id ->
+        thread {
+            // withLock bloquea el mutex y lo desbloquea al salir del bloque
+            lock.withLock {
+                println("Proceso $id: Accediendo al recurso compartido")
+                Thread.sleep(1000)
+                println("Proceso $id: Liberando el recurso compartido")
+            }
         }
     }
-
-    launch {
-        lock.withLock {
-            println("Proceso 2: Accediendo al recurso compartido")
-            delay(1000)
-            println("Proceso 2: Liberando el recurso compartido")
-        }
-    }
+    tareas.forEach { it.join() }
 }
 ```
 
+:::warning Locks y corrutinas
+Los locks de Java (`ReentrantLock`) pertenecen al **hilo** que los adquiere. Una corrutina puede suspenderse y reanudarse en otro hilo, por lo que no deben combinarse con funciones de suspensión como `delay()` dentro de un `withLock`. Para corrutinas existe `kotlinx.coroutines.sync.Mutex`, que veremos en el Tema 2.
+:::
+
 ### Monitores
 
-Los monitores son una abstracción de alto nivel para la sincronización de procesos. Un monitor es un objeto que encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. Los monitores utilizan mutexes y condiciones para garantizar que solo un proceso pueda acceder al recurso compartido a la vez.
+Los monitores son una abstracción de alto nivel para la sincronización. Un monitor es un objeto que encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. Los monitores utilizan un mutex y **variables de condición** para garantizar que solo uno pueda acceder al recurso a la vez y para que los demás esperen de forma ordenada.
 
 Aquí hay un ejemplo de cómo usar monitores en Kotlin:
 
 ```kotlin
-import kotlinx.coroutines.*
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 import java.util.concurrent.locks.Condition
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.thread
+import kotlin.concurrent.withLock
 
 class Monitor {
     private val lock = ReentrantLock()
     private val condition: Condition = lock.newCondition()
-    private var recursoDisponible = false
+    private var recursoDisponible = true // Al principio el recurso está libre
 
     fun accederRecurso() {
         lock.withLock {
@@ -735,24 +773,48 @@ class Monitor {
     }
 }
 
-fun main() = runBlocking {
+fun main() {
     val monitor = Monitor()
 
-    launch {
-        monitor.accederRecurso()
-        delay(1000)
-        monitor.liberarRecurso()
+    val tareas = (1..2).map {
+        thread {
+            monitor.accederRecurso()
+            Thread.sleep(1000)
+            monitor.liberarRecurso()
+        }
     }
+    tareas.forEach { it.join() }
+}
+```
 
-    launch {
-        monitor.accederRecurso()
-        delay(1000)
-        monitor.liberarRecurso()
+En este ejemplo, la clase `Monitor` encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. El primero que llama a `accederRecurso()` lo ocupa; el segundo se queda esperando en `condition.await()` (lo que libera temporalmente el lock) hasta que el primero llama a `liberarRecurso()` y le avisa con `condition.signal()`.
+
+### Sincronización entre procesos con bloqueo de ficheros
+
+Cuando los que compiten por un recurso son **procesos distintos** (por ejemplo, dos programas que escriben en el mismo fichero), podemos usar el bloqueo de ficheros que ofrece el sistema operativo a través de `FileChannel.lock()`:
+
+```kotlin
+import java.nio.channels.FileChannel
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption.*
+
+fun main() {
+    val pid = ProcessHandle.current().pid()
+    val fichero = Path.of("/tmp/registro_compartido.txt")
+
+    FileChannel.open(fichero, CREATE, WRITE, APPEND).use { canal ->
+        println("[$pid] Esperando el bloqueo del fichero...")
+        canal.lock().use { // Bloquea hasta que ningún otro proceso tenga el lock
+            println("[$pid] Bloqueo obtenido, escribiendo...")
+            canal.write(java.nio.ByteBuffer.wrap("Línea escrita por el proceso $pid\n".toByteArray()))
+            Thread.sleep(3000) // Simula una escritura larga
+        } // El bloqueo se libera al salir del bloque
+        println("[$pid] Bloqueo liberado")
     }
 }
 ```
 
-En este ejemplo, la clase `Monitor` encapsula un recurso compartido y proporciona métodos para acceder a él de manera segura. Los procesos utilizan estos métodos para acceder y liberar el recurso compartido, garantizando que solo un proceso pueda acceder al recurso a la vez.
+Si lanzamos este programa dos veces a la vez, el segundo proceso esperará a que el primero libere el bloqueo antes de escribir.
 
 :::info Más sobre sincronización en el tema 2
 Veremos más en detalle la sincronización en el tema 2, donde hablaremos de hilos y concurrencia. En este tema, profundizaremos en las técnicas de sincronización y cómo aplicarlas en aplicaciones concurrentes.

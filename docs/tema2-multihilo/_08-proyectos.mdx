@@ -83,7 +83,7 @@ Desarrolla una aplicación multiplataforma que permita gestionar descargas de ar
 
 #### Interfaz gráfica
 
-**Versión Escritorio (Compose for Desktop):**
+**Versión Escritorio (Compose Multiplatform (escritorio)):**
 - Ventana principal con lista de descargas
 - Panel lateral con estadísticas y configuración
 - Menú superior con opciones (Añadir, Pausar todas, Configuración)
@@ -103,7 +103,7 @@ Desarrolla una aplicación multiplataforma que permita gestionar descargas de ar
 ### Entregables específicos
 
 1. **Versión Windows:**
-   - Archivo `.exe` ejecutable (usando jpackage o similar)
+   - Archivo `.exe` ejecutable (con las tareas `packageExe`/`packageMsi` de Compose Multiplatform, que usan jpackage)
    - O instalador `.msi` para instalación completa
    - Debe ejecutarse sin requerir JVM instalado
 
@@ -119,7 +119,7 @@ Desarrolla una aplicación multiplataforma que permita gestionar descargas de ar
 
 4. **Código fuente:**
    - Proyecto Kotlin Multiplatform organizado
-   - Módulos: `shared`, `desktop`, `android`
+   - Estructura de módulos generada por el [asistente de KMP](https://kmp.jetbrains.com/) (código compartido + módulos de cada plataforma)
    - README con instrucciones de compilación
 
 ---
@@ -276,7 +276,7 @@ Desarrolla una aplicación multiplataforma que simule un mercado bursátil con m
 
 #### Interfaz gráfica
 
-**Versión Escritorio (Compose for Desktop):**
+**Versión Escritorio (Compose Multiplatform (escritorio)):**
 - Ventana principal dividida en secciones:
   - Tabla de cotizaciones (izquierda)
   - Gráfico de acción seleccionada (centro)
@@ -322,7 +322,7 @@ Desarrolla una aplicación multiplataforma que simule un mercado bursátil con m
 
 4. **Código fuente:**
    - Proyecto Kotlin Multiplatform organizado
-   - Módulos: `shared`, `desktop`, `android`
+   - Estructura de módulos generada por el [asistente de KMP](https://kmp.jetbrains.com/) (código compartido + módulos de cada plataforma)
 
 ---
 
@@ -746,7 +746,7 @@ Todos los proyectos deben incluir una **memoria técnica en formato PDF** que cu
 #### Para proyectos multiplataforma (1 y 2):
 
 1. **Versión Windows:**
-   - Archivo `.exe` ejecutable (usando jpackage, launch4j o similar)
+   - Archivo `.exe` ejecutable (con las tareas `packageExe`/`packageMsi` de Compose Multiplatform, que usan jpackage, o similar)
    - **O** instalador `.msi` / `.exe` para instalación completa
    - La aplicación debe ejecutarse sin requerir que el usuario instale JVM u otras dependencias
 

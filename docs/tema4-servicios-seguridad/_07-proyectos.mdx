@@ -41,30 +41,34 @@ Desarrolla una "bóveda" digital segura para almacenar contraseñas. La aplicaci
 
 ---
 
-## Proyecto 2: Explorador de la NASA (Mars Rover Photos) 🚀
+## Proyecto 2: Explorador de la NASA (Astronomy Picture of the Day) 🚀
 
 **Plataformas:** Kotlin Multiplatform (Escritorio Windows + Android)
 **Enfoque:** Consumo de API REST + Imágenes
 
 ### Descripción
 
-Crea una aplicación que permita explorar las fotos tomadas por los rovers de la NASA en Marte (Curiosity, Opportunity, Spirit). La app consumirá la API pública de la NASA.
+Crea una aplicación que permita explorar la "Imagen astronómica del día" (APOD) que la NASA publica a diario desde 1995, junto con la explicación de un astrónomo. La app consumirá la API pública APOD de la NASA.
+
+:::note
+Este proyecto usaba antes la API de fotos de los rovers de Marte (*Mars Rover Photos*), pero ese servicio ya no está disponible.
+:::
 
 ### Funcionalidades obligatorias
 
 #### Comunicación y Red
-1.  **API Client:** Implementar un cliente HTTP (Ktor o Retrofit) para consumir la [NASA Mars Rover Photos API](https://api.nasa.gov/).
-2.  **Filtrado:** Permitir al usuario seleccionar el Rover, la cámara (FHAZ, RHAZ, MAST...) y la fecha terrestre (Sol).
-3.  **Carga de Imágenes:** Descargar y mostrar las imágenes de forma asíncrona (usando Coil o Kamel).
+1.  **API Client:** Implementar un cliente HTTP (Ktor o Retrofit) para consumir la [API APOD de la NASA](https://api.nasa.gov/) (endpoint `https://api.nasa.gov/planetary/apod`).
+2.  **Filtrado:** Permitir al usuario consultar la imagen de una fecha concreta (`date`), de un rango de fechas (`start_date` y `end_date`) o un número de imágenes aleatorias (`count`).
+3.  **Carga de Imágenes:** Descargar y mostrar las imágenes de forma asíncrona (usando Coil 3 o Kamel). Hay que tener en cuenta que algunos días el contenido es un vídeo (campo `media_type`) y mostrarlo de forma adecuada (miniatura o enlace).
 
 #### Interfaz Gráfica
-- **Galería:** Grid de imágenes con scroll infinito o paginación.
-- **Detalle:** Al pulsar una foto, verla en pantalla completa con información técnica (fecha, cámara, rover).
-- **Favoritos:** Guardar localmente las fotos favoritas.
+- **Galería:** Grid de imágenes con scroll infinito o paginación (por ejemplo, cargando semana a semana hacia atrás).
+- **Detalle:** Al pulsar una imagen, verla en pantalla completa con su información (título, fecha, explicación y autoría/copyright).
+- **Favoritos:** Guardar localmente las imágenes favoritas.
 
 #### Requisitos Técnicos
-- **API Key:** Gestionar la API Key de forma segura (no subirla al repo público).
-- **Manejo de Errores:** Mostrar mensajes amigables si la API falla o no hay internet.
+- **API Key:** Gestionar la API Key de forma segura (no subirla al repo público). La clave `DEMO_KEY` solo sirve para pruebas porque tiene un límite de peticiones muy bajo; hay que solicitar una clave gratuita en [api.nasa.gov](https://api.nasa.gov/).
+- **Manejo de Errores:** Mostrar mensajes amigables si la API falla, si se supera el límite de peticiones (código 429) o no hay internet.
 
 ---
 
@@ -80,10 +84,10 @@ Desarrolla una aplicación de escritorio para buscar información sobre películ
 ### Funcionalidades obligatorias
 
 #### Comunicación y Red
-1.  **Búsqueda en Tiempo Real:** Consumir la [OMDb API](http://www.omdbapi.com/) para buscar títulos mientras el usuario escribe (con debounce para no saturar).
+1.  **Búsqueda en Tiempo Real:** Consumir la [OMDb API](https://www.omdbapi.com/) para buscar títulos mientras el usuario escribe (con debounce para no saturar).
 2.  **Detalles:** Obtener información extendida: sinopsis, director, actores, premios y puntuaciones (Rotten Tomatoes, IMDB).
 
-#### Interfaz Gráfica (Compose for Desktop)
+#### Interfaz Gráfica (Compose Multiplatform (escritorio))
 - **Barra de Búsqueda:** Prominente en la parte superior.
 - **Lista de Resultados:** Tarjetas con el póster y el título.
 - **Panel Lateral de Detalle:** Al seleccionar una película, mostrar toda la información a la derecha.
@@ -110,7 +114,7 @@ Una aplicación de escritorio para monitorizar la calidad del aire y las condici
 1.  **Datos Ambientales:** Consumir la [Air Quality Open Data Platform (AQICN)](https://aqicn.org/api/) o OpenWeatherMap para obtener el índice de calidad del aire (AQI), PM2.5, PM10 y temperatura.
 2.  **Geolocalización IP:** Usar una API gratuita de IP-to-Location para detectar la ciudad aproximada del usuario al iniciar.
 
-#### Interfaz Gráfica (Compose for Desktop)
+#### Interfaz Gráfica (Compose Multiplatform (escritorio))
 - **Mapa de Calor (Simplificado):** O una lista de estaciones de medición cercanas con códigos de colores (Verde=Bueno, Rojo=Peligroso).
 - **Gráficos Históricos:** Mostrar la evolución de la contaminación en las últimas 24 horas.
 - **Alertas:** Notificación visual si el nivel de contaminación supera un umbral seguro en la ciudad seleccionada.

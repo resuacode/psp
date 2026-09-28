@@ -15,7 +15,7 @@ Depurar aplicaciones que usan SSL/TLS o criptografía es más complejo que depur
 
 Java proporciona una propiedad del sistema muy potente para ver qué está ocurriendo durante el "handshake" SSL (negociación de certificados y claves).
 
-- **Activar logs de depuración:** Añadir `-Djavax.net.debug=all` (o `ssl`) a los argumentos de la VM al ejecutar el programa.
+- **Activar logs de depuración:** Añadir `-Djavax.net.debug=ssl:handshake` a los argumentos de la VM al ejecutar el programa (con `-Djavax.net.debug=all` se muestra todo, pero la salida es enorme).
 - **Qué buscar en los logs:**
     - `trustStore is: ...`: Verifica que está cargando el almacén de confianza correcto.
     - `ignore cert: ...`: Si el certificado es rechazado.
@@ -33,7 +33,13 @@ Java proporciona una propiedad del sistema muy potente para ver qué está ocurr
 
 ### 3. Wireshark con Claves de Sesión
 
-Wireshark por defecto no puede leer tráfico HTTPS. Sin embargo, si configuramos nuestra aplicación Java para que vuelque las claves de sesión a un archivo, Wireshark puede usarlas para descifrar el tráfico capturado.
+Wireshark por defecto no puede leer tráfico TLS. Sin embargo, si la aplicación vuelca las claves de sesión a un archivo (formato *SSLKEYLOGFILE*), Wireshark puede usarlas para descifrar el tráfico capturado (en *Preferencias → Protocols → TLS → (Pre)-Master-Secret log filename*).
+
+Los navegadores y herramientas como `curl` escriben ese fichero si se define la variable de entorno `SSLKEYLOGFILE`. La JVM no tiene esta opción de forma nativa, pero se puede conseguir añadiendo un agente Java como [jSSLKeyLog](https://github.com/jsslkeylog/jsslkeylog) al arrancar el programa.
+
+:::danger Solo en desarrollo
+Un fichero de claves de sesión permite descifrar todas las comunicaciones capturadas. Nunca debe activarse en producción.
+:::
 
 ## Documentación de Seguridad
 
@@ -51,7 +57,7 @@ Debemos especificar:
 Es recomendable integrar herramientas automáticas en nuestro flujo de trabajo:
 - **SAST (Static Application Security Testing):** Analizan el código fuente buscando patrones inseguros (ej. `SonarQube`).
     - Detecta: Contraseñas hardcodeadas, uso de MD5, inyección SQL.
-- **DAST (Dynamic Application Security Testing):** Atacan la aplicación en ejecución (ej. `OWASP ZAP`).
+- **DAST (Dynamic Application Security Testing):** Atacan la aplicación en ejecución (ej. `ZAP`, antes conocido como OWASP ZAP).
     - Detecta: Cabeceras de seguridad faltantes, configuraciones SSL débiles.
 
 ## Buenas Prácticas Finales

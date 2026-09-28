@@ -208,26 +208,34 @@ fun main() {
 </details>
 
 ### Ejercicio 9: Crear un proceso hijo que ejecute otro programa Kotlin
-**Enunciado:** Escribe dos archivos Kotlin: el primero debe lanzar el segundo como proceso hijo y mostrar su salida.
+**Enunciado:** Escribe dos programas Kotlin: el primero debe lanzar el segundo como proceso hijo y mostrar su salida.
 **Requisitos:**
-- Usar tabs para mostrar ambos archivos.
+- El programa hijo debe estar compilado previamente como un `.jar` ejecutable.
+- El lanzador debe mostrar la salida del hijo y su código de salida.
 <details>
 <summary>Solución</summary>
-
-```kotlin title="Lanzador.kt"
-import java.io.BufferedReader
-import java.io.InputStreamReader
-
-fun main() {
-    val process = ProcessBuilder("kotlin", "HijoKt").start()
-    val reader = BufferedReader(InputStreamReader(process.inputStream))
-    reader.lines().forEach { println(it) }
-}
-```
 
 ```kotlin title="Hijo.kt"
 fun main() {
     println("¡Hola desde el proceso hijo!")
+}
+```
+
+Compilamos el hijo como un `.jar` que incluya el runtime de Kotlin (también se puede generar desde IntelliJ o con Gradle):
+
+```bash
+kotlinc Hijo.kt -include-runtime -d hijo.jar
+```
+
+```kotlin title="Lanzador.kt"
+fun main() {
+    // El proceso hijo es una nueva JVM que ejecuta hijo.jar
+    val process = ProcessBuilder("java", "-jar", "hijo.jar")
+        .redirectErrorStream(true)
+        .start()
+
+    process.inputStream.bufferedReader().lines().forEach { println("[hijo] $it") }
+    println("El hijo terminó con código ${process.waitFor()}")
 }
 ```
 </details>
@@ -318,17 +326,28 @@ fun runProcess(cmd: String): String {
 
 ```kotlin title="ProcessRunnerTest.kt"
 import io.mockk.every
-import io.mockk.mockkObject
+import io.mockk.mockkStatic
+import io.mockk.unmockkAll
+import io.mockk.verify
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-object ProcessRunnerTest {
+class ProcessRunnerTest {
+    @AfterEach
+    fun tearDown() = unmockkAll()
+
     @Test
     fun testRunProcessMock() {
-        mockkObject(::runProcess)
+        // Las funciones de nivel superior se compilan como métodos estáticos,
+        // por eso se simulan con mockkStatic
+        mockkStatic(::runProcess)
         every { runProcess("test") } returns "mockeado"
+
         val result = runProcess("test")
+
         assertEquals("mockeado", result)
+        verify(exactly = 1) { runProcess("test") }
     }
 }
 ```
@@ -414,7 +433,11 @@ fun main() {
     val temp = File.createTempFile("flujo", ".txt")
     // 2. Escribir varias líneas usando un proceso
     val lines = listOf("primera línea", "segunda línea", "tercera línea")
-    ProcessBuilder("bash", "-c", "echo '${lines.joinToString("\\n")}' > ${temp.absolutePath}").start().waitFor()
+    // printf repite el formato "%s\n" para cada argumento: una línea por elemento
+    ProcessBuilder("printf", "%s\\n", *lines.toTypedArray())
+        .redirectOutput(temp)
+        .start()
+        .waitFor()
     // 3. Contar líneas usando wc -l
     val wc = ProcessBuilder("wc", "-l", temp.absolutePath).start()
     val numLines = wc.inputStream.bufferedReader().readText().trim()
@@ -430,7 +453,7 @@ fun main() {
 ```mermaid
 flowchart TD
     A[Inicio] --> B[Crear archivo temporal]
-    B --> C[Escribir varias líneas con proceso echo]
+    B --> C[Escribir varias líneas con proceso printf]
     C --> D[Contar líneas con proceso wc -l]
     D --> E[Leer y mostrar contenido con proceso cat]
     E --> F[Fin]

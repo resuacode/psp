@@ -3,6 +3,9 @@ sidebar_position: 5
 title: Depuración y Documentación de Aplicaciones Multiproceso
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Depuración y Documentación de Aplicaciones Multiproceso
 
 ## Técnicas básicas de depuración para aplicaciones multiproceso
@@ -11,7 +14,7 @@ Depurar aplicaciones multiproceso puede ser un desafío debido a la concurrencia
 
 Algunas técnicas básicas incluyen:
 
-- **Uso de herramientas de depuración específicas**: Herramientas como GDB (GNU Debugger) permiten inspeccionar el estado de los procesos, establecer puntos de interrupción y seguir la ejecución paso a paso. 
+- **Uso de herramientas de depuración específicas**: El depurador del IDE (IntelliJ IDEA) permite establecer puntos de interrupción y seguir la ejecución paso a paso, e incluso conectarse a un proceso ya en marcha (*Attach to Process*). Para programas nativos se usan herramientas como GDB (GNU Debugger). 
 - **Registros detallados (logging)**: Implementar un sistema de logging robusto que registre eventos importantes, errores y estados de los procesos. Esto ayuda a rastrear el comportamiento de la aplicación en tiempo real y a identificar problemas.
 - **Pruebas unitarias y de integración**: Crear pruebas específicas para cada proceso y para la interacción entre ellos. Esto ayuda a asegurar que cada componente funcione correctamente de manera aislada y en conjunto.
 - **Análisis de concurrencia**: Utilizar herramientas que detecten condiciones de carrera, bloqueos y otros problemas relacionados con la concurrencia. 
@@ -78,7 +81,7 @@ Sus métodos principales incluyen:
 Podemos configurar diferentes niveles de logging para controlar la cantidad de información registrada, lo que es útil para depurar sin sobrecargar los registros con demasiados detalles.
 
 :::tip Documentación oficial de java.util.logging
-Para obtener más información sobre la biblioteca `java.util.logging` y sus características, puedes visitar la [documentación oficial de Java](https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html).
+Para obtener más información sobre la biblioteca `java.util.logging` y sus características, puedes visitar la [documentación oficial de Java](https://docs.oracle.com/en/java/javase/21/docs/api/java.logging/java/util/logging/package-summary.html).
 :::
 
 ### Pruebas unitarias en Kotlin
@@ -108,43 +111,64 @@ En este ejemplo, estamos probando una clase `Calculator` que tiene un método `a
 Para ejecutar las pruebas unitarias, podemos utilizar un entorno de desarrollo integrado (IDE) como IntelliJ IDEA, que tiene soporte integrado para JUnit. También podemos ejecutar las pruebas desde la línea de comandos utilizando Gradle o Maven.   
 
 :::info Para usar JUnit
-Para utilizar JUnit en tu proyecto Kotlin, es necesario agregar la dependencia correspondiente en el archivo de construcción (build file) de tu proyecto. Aquí tienes un ejemplo de cómo hacerlo en Gradle y Maven:
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+Para utilizar JUnit en tu proyecto Kotlin, es necesario agregar las dependencias correspondientes en el archivo de construcción (*build file*) de tu proyecto. Desde septiembre de 2025 la versión actual es **JUnit 6**, que requiere Java 17 o superior y mantiene la misma API `org.junit.jupiter` que JUnit 5, por lo que los tests se escriben igual. La forma recomendada de declarar las dependencias es mediante el BOM (*Bill of Materials*), que fija de una vez la versión de todos los módulos de JUnit:
+
 <Tabs>
-    <TabItem value="gradle" label="Gradle (Groovy)">
-        ```groovy
-        testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-        testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
-        ```
-    </TabItem>
     <TabItem value="gradle-kts" label="Gradle (Kotlin DSL)">
         ```kotlin
-        testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
-        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+        dependencies {
+            testImplementation(platform("org.junit:junit-bom:6.1.3"))
+            testImplementation("org.junit.jupiter:junit-jupiter")
+            testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+        }
+
+        tasks.test {
+            useJUnitPlatform()
+        }
+        ```
+    </TabItem>
+    <TabItem value="gradle" label="Gradle (Groovy)">
+        ```groovy
+        dependencies {
+            testImplementation platform('org.junit:junit-bom:6.1.3')
+            testImplementation 'org.junit.jupiter:junit-jupiter'
+            testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        }
+
+        test {
+            useJUnitPlatform()
+        }
         ```
     </TabItem>
     <TabItem value="maven" label="Maven">
         ```xml
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junitVersion}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
-            <version>${junitVersion}</version>
-            <scope>test</scope>
-        </dependency>
+        <dependencyManagement>
+            <dependencies>
+                <dependency>
+                    <groupId>org.junit</groupId>
+                    <artifactId>junit-bom</artifactId>
+                    <version>6.1.3</version>
+                    <type>pom</type>
+                    <scope>import</scope>
+                </dependency>
+            </dependencies>
+        </dependencyManagement>
+
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
         ```
     </TabItem>
 </Tabs>
-**Nota:** Asegúrate de reemplazar `${junitVersion}` con la versión específica de JUnit que deseas utilizar.  
+
+**Nota:** Las versiones indicadas eran las más recientes en septiembre de 2026. Puedes consultar la última en [Maven Central](https://central.sonatype.com/artifact/org.junit/junit-bom). Si creas el proyecto con el asistente de IntelliJ IDEA, normalmente estas dependencias ya vienen configuradas.
 :::
 :::tip Documentación oficial de JUnit
-Para obtener más información sobre JUnit y sus características, puedes visitar la [documentación oficial de JUnit](https://junit.org/junit5/).
+Para obtener más información sobre JUnit y sus características, puedes visitar la [documentación oficial de JUnit](https://docs.junit.org/current/).
 :::
 
 #### Ejemplo de prueba unitaria con MockK
@@ -174,35 +198,32 @@ class UserServiceTest {
 En este ejemplo, estamos probando una clase `UserService` que depende de un `UserRepository`. Utilizamos MockK para crear un mock del `UserRepository` y definir su comportamiento esperado. La prueba verifica que el método `getUserName` de `UserService` devuelva el nombre correcto.   
 
 :::info Para usar MockK
-Para utilizar MockK, es necesario agregar la dependencia correspondiente en el archivo de construcción (build file) de tu proyecto. Aquí tienes un ejemplo de cómo hacerlo en Gradle y Maven:
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+Para utilizar MockK, es necesario agregar la dependencia correspondiente en el archivo de construcción (*build file*) de tu proyecto:
 
 <Tabs>
-    <TabItem value="gradle" label="Gradle (Groovy)">
-        ```groovy
-        testImplementation "io.mockk:mockk:${mockkVersion}"
-        ```
-    </TabItem>
     <TabItem value="gradle-kts" label="Gradle (Kotlin DSL)">
         ```kotlin
-        testImplementation("io.mockk:mockk:${mockkVersion}")
+        testImplementation("io.mockk:mockk:1.14.11")
+        ```
+    </TabItem>
+    <TabItem value="gradle" label="Gradle (Groovy)">
+        ```groovy
+        testImplementation 'io.mockk:mockk:1.14.11'
         ```
     </TabItem>
     <TabItem value="maven" label="Maven">
         ```xml
         <dependency>
             <groupId>io.mockk</groupId>
-            <artifactId>mockk</artifactId>
-            <version>${mockkVersion}</version>
+            <artifactId>mockk-jvm</artifactId>
+            <version>1.14.11</version>
             <scope>test</scope>
         </dependency>
         ```
     </TabItem>
 </Tabs>
 
-**Nota:** Asegúrate de reemplazar `${mockkVersion}` con la versión específica de MockK que deseas utilizar.  
+**Nota:** Puedes consultar la última versión de MockK en [Maven Central](https://central.sonatype.com/artifact/io.mockk/mockk).
 :::
 
 :::tip Documentación oficial de MockK
@@ -326,6 +347,8 @@ Depurar aplicaciones multiproceso en tiempo real puede ser complicado debido a l
 ### Herramientas de depuración
 
 Algunas herramientas populares para la depuración de aplicaciones multiproceso incluyen:
+- **Depurador de IntelliJ IDEA**: Permite depurar programas Kotlin/Java, incluidos procesos remotos o ya en ejecución (*Attach to Process*).
+- **Herramientas del JDK**: `jps` (lista los procesos Java en ejecución), `jcmd` y `jstack` (vuelcan el estado de los hilos de una JVM) y JDK Mission Control / Java Flight Recorder (perfilado).
 - **GDB**: Un depurador potente para programas escritos en C/C++.
 - **Valgrind**: Herramienta para detectar fugas de memoria y errores de memoria.
 - **strace**: Utilidad para rastrear llamadas al sistema y señales.

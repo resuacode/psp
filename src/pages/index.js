@@ -33,7 +33,7 @@ export default function Home() {
   return (
     <Layout
       title={`PSP`}
-      description="Módulo de Programación de Servizos y Procesos de 2º DAM">
+      description="Módulo de Programación de Servicios y Procesos de 2º DAM">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

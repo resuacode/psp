@@ -19,6 +19,20 @@ sealed class Resultado {
 
 En el ejemplo anterior, se declara una clase sellada `Resultado` con dos subclases: `Exito` y `Error`. Ambas subclases tienen una propiedad `mensaje` de tipo `String`.
 
+Cuando un caso no necesita datos, se declara como `data object` (disponible desde Kotlin 1.9). Al ser un `object` solo existe una instancia, y al ser `data` su `toString()` muestra el nombre del caso en lugar de una dirección de memoria:
+
+```kotlin
+sealed class EstadoCarga {
+    data object Cargando : EstadoCarga()
+    data class Exito(val datos: List<String>) : EstadoCarga()
+    data class Error(val mensaje: String) : EstadoCarga()
+}
+```
+
+:::tip[Sealed interfaces]
+También existen las `sealed interface`, que funcionan igual pero permiten que una clase implemente varias de ellas. Son muy habituales para modelar estados y eventos de la interfaz en Android.
+:::
+
 ## Uso de clases selladas
 
 Las clases selladas se utilizan principalmente en expresiones `when` para manejar de forma segura todas las subclases. 
@@ -32,7 +46,7 @@ fun procesarResultado(resultado: Resultado) {
 }
 ```
 
-En el ejemplo anterior, se define una función `procesarResultado` que toma un parámetro de tipo `Resultado`. Dentro de la expresión `when`, se manejan de forma segura las subclases `Exito` y `Error` de la clase sellada `Resultado`.
+En el ejemplo anterior, se define una función `procesarResultado` que toma un parámetro de tipo `Resultado`. Dentro de la expresión `when`, se manejan de forma segura las subclases `Exito` y `Error` de la clase sellada `Resultado`. Como el compilador conoce todas las subclases posibles, no hace falta una rama `else`, y si en el futuro se añade una nueva subclase, el compilador nos avisará de todos los `when` que hay que actualizar.
 
 Las clases selladas son una forma segura y concisa de manejar un conjunto finito de subclases en Kotlin.
 
@@ -40,7 +54,7 @@ Las clases selladas son una forma segura y concisa de manejar un conjunto finito
 
 - **Seguridad**: Las clases selladas garantizan que todas las subclases se manejen de forma segura en un bloque `when`.
 - **Concisión**: Las clases selladas permiten definir un conjunto finito de subclases de forma concisa y legible.
-- **Extensibilidad**: Las clases selladas pueden tener subclases anidadas, lo que permite una mayor extensibilidad y modularidad en el código.
+- **Jerarquía controlada**: Todas las subclases directas deben declararse en el mismo paquete y módulo que la clase sellada, por lo que nadie puede añadir subclases desde fuera. Las subclases pueden ser `data class`, `data object` o clases normales, cada una con sus propias propiedades.
 
 Las clases selladas son una característica poderosa de Kotlin que te permite representar de forma segura un conjunto finito de subclases y manejarlas de forma concisa y legible en tu código.
 

@@ -245,7 +245,12 @@ Gestionados directamente por el sistema operativo. Son más pesados pero permite
 Combina ambos enfoques, con múltiples hilos de usuario mapeados a hilos de kernel. Este es el modelo más común en sistemas operativos modernos.
 
 :::info Threading en la JVM
-Kotlin, al ejecutarse sobre la JVM (Java Virtual Machine), utiliza hilos a nivel de kernel. Cada hilo de Kotlin/Java se mapea directamente a un hilo del sistema operativo, lo que permite aprovechar completamente los sistemas multiprocesador.
+Kotlin, al ejecutarse sobre la JVM (Java Virtual Machine), dispone de dos tipos de hilos:
+
+- **Hilos de plataforma** (*platform threads*): son los hilos "clásicos" (`Thread`). Cada uno se mapea directamente a un hilo del sistema operativo (modelo 1:1), lo que permite aprovechar completamente los sistemas multiprocesador, pero son relativamente pesados.
+- **Hilos virtuales** (*virtual threads*, disponibles desde **Java 21**): son hilos ligeros gestionados por la propia JVM. Miles o millones de hilos virtuales se ejecutan sobre un pequeño número de hilos del sistema operativo (modelo M:N, similar al modelo híbrido). Cuando un hilo virtual se bloquea en una operación de E/S, la JVM libera el hilo del sistema operativo para que ejecute otro hilo virtual.
+
+Las **corrutinas de Kotlin**, que veremos más adelante, siguen una idea parecida a la de los hilos virtuales, pero implementada en el propio lenguaje.
 :::
 
 ## Conclusión

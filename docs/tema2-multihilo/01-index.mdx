@@ -23,6 +23,7 @@ Esta unidad profundizará en la programación con hilos, que es esencial para el
     - Problemas asociados a la concurrencia (condiciones de carrera, interbloqueos). 
     - Mecanismos para compartir información y sincronizar hilos (monitores, semáforos, bloqueos, etc.). 
     - Gestión de las prioridades de ejecución de los hilos.
+    - Hilos virtuales (Java 21) frente a hilos de plataforma.
 
 4. Depuración y Documentación de Aplicaciones Multihilo
     - Estrategias específicas para la depuración de aplicaciones multihilo (puntos de interrupción condicionales, inspección de variables compartidas). 
@@ -37,7 +38,7 @@ Esta unidad profundizará en la programación con hilos, que es esencial para el
 
 6. Corrutinas de Kotlin en Android
     - Integración de corrutinas en aplicaciones Android.
-    - Uso de corrutinas con componentes de arquitectura (ViewModel, LiveData).
+    - Uso de corrutinas con componentes de arquitectura (ViewModel, StateFlow).
     - Manejo del ciclo de vida y cancelación automática.
     - Ejemplos prácticos de uso en tareas comunes (peticiones de red, acceso a base de datos).
 
@@ -438,7 +439,7 @@ class Logger {
     }
     
     suspend fun log(level: String, message: String) {
-        val name = coroutineContext[CoroutineName]?.name ?: "unknown"
+        val name = currentCoroutineContext()[CoroutineName]?.name ?: "unknown"
         channel.send(LogEvent(level, message, name))
     }
     
@@ -523,7 +524,7 @@ fun main() = runBlocking {
     }
     
     // Controlador: Modifica el contador
-    launch(CoroutineName("Controller")) {
+    val controller = launch(CoroutineName("Controller")) {
         delay(100)
         repeat(15) {
             counter.increment()
@@ -536,7 +537,12 @@ fun main() = runBlocking {
         }
     }
     
-    delay(7000) // Esperar a que termine
+    controller.join() // Esperar a que el controlador termine
+    delay(100)        // Dar tiempo a los observadores a procesar el último valor
+
+    // Los observadores de un StateFlow nunca terminan por sí solos:
+    // hay que cancelarlos para que runBlocking pueda finalizar
+    coroutineContext.cancelChildren()
 }
 ```
 </details>
@@ -610,7 +616,7 @@ class TaskManager {
         
         var elapsed = 0L
         while (elapsed < task.duration) {
-            ensureActive() // Verifica cancelación
+            currentCoroutineContext().ensureActive() // Verifica cancelación
             delay(100)
             elapsed += 100
             
@@ -684,4 +690,3 @@ fun main() = runBlocking {
 ```
 </details>
 
-```

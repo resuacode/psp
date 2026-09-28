@@ -1,0 +1,121 @@
+---
+sidebar_position: 2
+title: Fe de erratas
+---
+
+# Fe de erratas y actualizaciones
+
+En esta página se recogen las **erratas corregidas** y los **contenidos actualizados** en los apuntes del módulo, organizados por temas. Si estudiaste con una versión anterior de los apuntes, consulta esta página para saber qué ha cambiado.
+
+:::info Revisión de septiembre de 2026
+Todas las versiones de librerías que aparecen en los apuntes se comprobaron en Maven Central y en el repositorio de Google en septiembre de 2026. Con el tiempo aparecerán versiones nuevas: consulta siempre la última disponible.
+:::
+
+## Página de inicio
+
+- **Historia de Kotlin**: no fue desarrollado "por JetBrains y Google en 2011". Lo presentó JetBrains en 2011 (versión 1.0 en 2016); Google lo adoptó como lenguaje oficial de Android en 2017 y es el lenguaje preferente (*Kotlin-first*) desde 2019.
+- **IDE**: se corrige la descripción de IntelliJ IDEA, que no está "diseñado específicamente para Android". Se añade una nota sobre la relación entre IntelliJ IDEA y Android Studio.
+- **Tema 2**: se describía como "hilos en Java"; en el módulo se trabaja con **Kotlin** sobre la JVM.
+
+## Tema 0 · Introducción a Kotlin
+
+### Código que no compilaba
+
+- `intListOf`, `doubleListOf`, `intMapOf`, `intSetOf`, etc. **no existen** en la librería estándar de Kotlin. Se han eliminado esos apartados de listas, maps y sets; para trabajar con primitivos se usan `IntArray`, `DoubleArray`…
+- `fun <T : Number> sumar(a: T, b: T) = a + b` no compila, porque `Number` no tiene operador `+`. Ahora se convierte a `Double` con `toDouble()`.
+- El ejemplo de varianza `class Caja<in T>(val contenido: T)` no compila (una propiedad `val` es una posición de salida). Se sustituye por una interfaz `Comparador<in T>`.
+- Varios ejemplos declaraban dos veces la misma variable en el mismo bloque (conversión de tipos, null safety).
+
+### Código obsoleto
+
+- `capitalize()` → `replaceFirstChar { it.uppercase() }`.
+- `toUpperCase()` → `uppercase()`.
+- Los casos sin datos de las *sealed classes* se declaran ahora como `data object`.
+- Para recorrer un enum se usa `entries` en lugar de `values()`.
+
+### Afirmaciones incorrectas corregidas
+
+- "Los arrays son inmutables": tienen **tamaño fijo**, pero sus elementos sí se pueden modificar.
+- `listOf()` crea una lista **de solo lectura**, no "una lista mutable cuyo contenido no se puede modificar".
+- Los parámetros de una función **no se pueden declarar `var`**; se copian a una variable local.
+- `object Configuracion` no es un objeto anónimo, sino una **declaración de objeto** (Singleton). Los objetos **no pueden tener constructores**.
+- Los enums pueden implementar interfaces, pero **no pueden heredar de clases**.
+- Las data classes no tienen por qué tener propiedades de solo lectura (aunque se recomienda `val`).
+- Los `String` son inmutables **igual que en Java**, no "a diferencia de Java".
+- Se explica por qué `===` devuelve `true` con dos literales iguales (*string pool*) y por qué hay que comparar textos con `==`.
+- Con `private set`, la propiedad **sí se puede leer** desde fuera de la clase; solo no se puede modificar.
+- `const` se puede declarar en el nivel superior del fichero, en un `object` o en un `companion object`.
+- Se corrige la descripción de `with` y `also` en las scope functions.
+
+### Contenido añadido
+
+- `if`, `when` y `try` como expresiones.
+- Smart casts y uso de `?.let`.
+- Propiedades declaradas en el constructor primario y bloque `init`.
+- `companion object`.
+- `sealed interface` y `data object`.
+- Tabla resumen de las scope functions.
+- `toIntOrNull()` y la ausencia de conversiones implícitas entre números.
+
+## Tema 1 · Programación concurrente y procesos
+
+- **`Runtime.exec(String)`** está obsoleto desde Java 18. Ahora se usa la versión con array (`exec(arrayOf("ls", "-l"))`) o `ProcessBuilder`.
+- **Memoria compartida**: el ejemplo anterior era de Kotlin/Native (`kotlinx.cinterop`) y no funcionaba en la JVM. Se sustituye por ficheros mapeados en memoria (`MappedByteBuffer`), con un programa escritor y otro lector.
+- **Semáforos, mutex y monitores**: los ejemplos combinaban corrutinas con `ReentrantLock` y `delay()`, lo cual es incorrecto. Además, el ejemplo del monitor se bloqueaba siempre porque el recurso empezaba como no disponible. Se han rehecho con hilos.
+- Se corrige la definición de semáforo: es un **contador**, no una variable con dos estados (eso es el semáforo binario).
+- **Sincronización entre procesos**: se añade el bloqueo de ficheros con `FileChannel.lock()`.
+- **Primer y segundo plano**: los ejemplos se rehacen con `inheritIO()`, `Redirect.DISCARD` y `onExit()`. Se añade un aviso sobre el bloqueo del proceso hijo cuando nadie lee su salida.
+- **Tablas de métodos**: `destroy()` solicita la finalización del proceso; la finalización forzosa es `destroyForcibly()`. Se añaden `pid()`, `waitFor(timeout)`, `onExit()`, `descendants()` y `ProcessHandle.allProcesses()`.
+- **Ejercicio 9**: `ProcessBuilder("kotlin", "HijoKt")` no funcionaba. Ahora el hijo se compila como `.jar` y se lanza con `java -jar`.
+- **Ejercicio 12**: las funciones de nivel superior se simulan con `mockkStatic`, no con `mockkObject`.
+- **Ejercicio 15**: `echo` no interpreta `\n`, por lo que el fichero tenía una sola línea. Ahora se usa `printf`.
+- **Dependencias de pruebas**: JUnit 6 declarado mediante BOM y MockK 1.14.
+- Se añaden las herramientas de depuración de la JVM (`jps`, `jcmd`, `jstack`) y se actualizan los enlaces a la documentación de Java 21.
+
+## Tema 2 · Programación multihilo
+
+- **Hilos virtuales (Java 21)**: nueva sección. Se corrige la afirmación de que la JVM solo utiliza hilos del sistema operativo.
+- **Mutex de corrutinas**: nueva sección sobre `kotlinx.coroutines.sync.Mutex` y por qué no se debe usar `synchronized` con corrutinas.
+- **Ejercicio 8**: se usa `currentCoroutineContext()`.
+- **Ejercicio 9**: el programa no terminaba nunca, porque los colectores de un `StateFlow` no acaban por sí solos. Ahora se cancelan al final.
+- **Ejercicio 10**: `ensureActive()` sin ámbito no compila. Ahora es `currentCoroutineContext().ensureActive()`.
+- **SupervisorJob**: el ejemplo pasa a usar `supervisorScope`.
+- `Thread.id` está obsoleto; se usa `threadId()`.
+- Para probar corrutinas se recomienda `runTest` en lugar de `TestCoroutineScheduler`.
+- **Android**:
+  - Versiones actualizadas: coroutines 1.11.0, lifecycle 2.11.0, Compose BOM 2026.09.00, Retrofit 3.0.0, Room 2.8.5 y WorkManager 2.12.0.
+  - Room necesitaba su compilador; ahora se configura con KSP.
+  - Se recomienda `collectAsStateWithLifecycle()` en lugar de `collectAsState()`.
+  - `Icons.Default.Error` no está en el paquete básico de iconos; se sustituye por `Icons.Default.Warning`.
+  - `StateFlow` sustituye a `LiveData` en los contenidos del tema.
+
+## Tema 3 · Comunicaciones en red con sockets
+
+- Nuevo ejemplo de servidor concurrente con **hilos virtuales**.
+- Monitorización: se añaden `ss -lntp` y los comandos equivalentes de Windows (`netstat -ano`, `Test-NetConnection`), y una nota sobre `telnet`.
+- **Ejercicio 2**: `Date` se sustituye por `LocalDateTime`.
+
+## Tema 4 · Servicios en red y seguridad
+
+### Seguridad
+
+- **Contraseñas**: SHA-256 no es adecuado por sí solo para guardar contraseñas, porque es demasiado rápido. El ejercicio 1 usa ahora **PBKDF2** (600.000 iteraciones) y compara los hashes en tiempo constante con `MessageDigest.isEqual()`.
+- **Cifrado AES**: `Cipher.getInstance("AES")` utiliza por defecto el modo **ECB**, que es inseguro. Todos los ejemplos usan ahora **`AES/GCM/NoPadding`** con un IV aleatorio.
+- **TLS**: se explica que la clave de sesión se acuerda con **ECDHE** (secreto hacia adelante), y que SSL está obsoleto (se usa TLS 1.2 o 1.3).
+- **Certificados**: `keytool -genkey` y JKS se sustituyen por `keytool -genkeypair` y PKCS12. El cliente usaba como truststore el keystore del servidor, **que contiene su clave privada**; ahora usa un truststore propio que solo contiene el certificado.
+- El servidor TLS acepta solo TLS 1.3.
+- `EncryptedSharedPreferences` está obsoleto; se explican el Android Keystore y Tink.
+- Se añade un ejemplo de **firma digital** con Ed25519.
+
+### Protocolos y servicios
+
+- **HttpServer**: la cabecera `Content-Length` se calculaba en caracteres en lugar de bytes, y fallaba con textos como "¡". Corregido en todos los ejemplos.
+- **Ejercicio 4**: se usa la cabecera `Authorization: Bearer ...` y el código **401** (el 403 se reserva para usuarios autenticados sin permiso).
+- **Ktor**: se actualiza a Ktor 3.6.0. `ActorSelectorManager` se sustituye por `SelectorManager`, y `readUTF8Line()` (obsoleto) por `readLine()`. Se añade un ejemplo de deserialización JSON.
+- **Retrofit**: se actualiza a Retrofit 3, con funciones `suspend` en lugar de `Call`.
+- `URL(String)` está obsoleto desde Java 20; se usa `URI(...).toURL()`.
+- Se añaden avisos sobre FTP (sin cifrar) y sobre las contraseñas de aplicación en SMTP.
+
+### Proyectos
+
+- La API de fotos de los rovers de Marte de la NASA ya no está disponible. El proyecto 2 usa ahora la **API APOD** (*Astronomy Picture of the Day*).

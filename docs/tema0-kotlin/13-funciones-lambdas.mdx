@@ -53,7 +53,7 @@ En el ejemplo anterior, se definen dos funciones lambda `suma` y `resta` que tom
 
 ## Los parámetros en Kotlin
 
-A diferencia de Java, en Kotlin los parámetros de una función son inmutables por defecto, lo que significa que no se pueden modificar dentro de la función. Si necesitas modificar un parámetro dentro de una función, debes declararlo como una variable `var`.
+A diferencia de Java, en Kotlin los parámetros de una función son siempre de solo lectura (se comportan como `val`), lo que significa que no se pueden reasignar dentro de la función. Si necesitas trabajar con un valor modificable, debes copiarlo en una variable local declarada con `var`.
 
 ```kotlin
 fun duplicar(numero: Int): Int {
@@ -63,7 +63,7 @@ fun duplicar(numero: Int): Int {
 }
 ```
 
-En el ejemplo anterior, se define una función `duplicar` que toma un parámetro de tipo `Int` y devuelve un valor de tipo `Int`. El parámetro `numero` se declara como una variable `var` para poder modificar su valor dentro de la función.
+En el ejemplo anterior, se define una función `duplicar` que toma un parámetro de tipo `Int` y devuelve un valor de tipo `Int`. Como el parámetro `numero` no se puede reasignar (`numero *= 2` daría error de compilación), se copia su valor en la variable local `resultado`, declarada con `var`, y se modifica esta.
 
 ### Parámetros con valores por defecto
 
@@ -107,7 +107,7 @@ val suma: (Int, Int) -> Int = { a, b -> a + b }
 val resta = { a: Int, b: Int -> a - b }
 ```
 
-En el ejemplo anterior, se definen dos funciones lambda `suma` y `resta` que toman dos parámetros de tipo `Int` y devuelven un valor de tipo `Int`. En la función lambda `suma`, se especifican los tipos de los parámetros de entrada, mientras que en la función lambda `resta`, se deja que el compilador infiera los tipos automáticamente.
+En el ejemplo anterior, se definen dos funciones lambda `suma` y `resta` que toman dos parámetros de tipo `Int` y devuelven un valor de tipo `Int`. En `suma` se declara el tipo completo de la variable (`(Int, Int) -> Int`), por lo que el compilador infiere el tipo de los parámetros `a` y `b`. En `resta` se indican los tipos de los parámetros dentro de la propia lambda y el compilador infiere el tipo de la variable y el tipo de retorno.
 
 ### La palabra reservada `it`
 

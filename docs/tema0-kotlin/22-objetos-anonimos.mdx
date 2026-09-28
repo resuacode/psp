@@ -58,7 +58,7 @@ El objeto anónimo define la implementación del método `saludar` y se puede ll
 
 ## Implementación del patrón Singleton con objetos anónimos
 
-En Kotlin, puedes implementar el patrón Singleton utilizando objetos anónimos. El patrón Singleton garantiza que una clase tenga una única instancia y proporciona un punto de acceso global a esa instancia.
+En Kotlin, puedes implementar el patrón Singleton utilizando la palabra clave `object`. El patrón Singleton garantiza que una clase tenga una única instancia y proporciona un punto de acceso global a esa instancia.
 
 ```kotlin
 object Configuracion {
@@ -70,15 +70,16 @@ println(Configuracion.servidor) // localhost
 println(Configuracion.puerto) // 8080
 ```
 
-En el ejemplo anterior, se define un objeto anónimo `Configuracion` que tiene dos propiedades `servidor` y `puerto`.
+En el ejemplo anterior, se utiliza una **declaración de objeto** (`object Configuracion`). A diferencia de las *expresiones* de objeto que hemos visto antes, esta sí tiene nombre: Kotlin crea la clase y su única instancia de forma automática y perezosa (la primera vez que se usa) y de forma segura entre hilos.
 
-El objeto anónimo se utiliza para almacenar la configuración de la aplicación y garantiza que solo haya una instancia de la configuración en toda la aplicación.
+El objeto `Configuracion` se utiliza para almacenar la configuración de la aplicación y garantiza que solo haya una instancia de la configuración en toda la aplicación.
 
 :::tip[Características de los objetos anónimos]
 Los objetos anónimos en Kotlin tienen las siguientes características:
 
-- No tienen un nombre y se crean utilizando la palabra clave `object`.
-- Pueden tener propiedades, métodos y constructores.
+- Las expresiones de objeto (`object { ... }`, `object : Interfaz { ... }`) no tienen nombre y crean una instancia nueva cada vez que se evalúan.
+- Las declaraciones de objeto (`object Nombre { ... }`) tienen nombre y una única instancia (Singleton).
+- Pueden tener propiedades, métodos y bloques `init`, pero **no constructores**.
 - Se utilizan para definir clases de forma concisa y reutilizable.
 - Se pueden utilizar para implementar interfaces y clases abstractas de forma anónima.
 - Se pueden utilizar para implementar el patrón Singleton y almacenar configuraciones globales.
@@ -87,7 +88,19 @@ Los objetos anónimos en Kotlin tienen las siguientes características:
 :::info[Sobre el patrón Singleton]
 El patrón Singleton es un patrón de diseño que garantiza que una clase tenga una única instancia y proporciona un punto de acceso global a esa instancia.
 
-En Kotlin, puedes implementar el patrón Singleton utilizando objetos anónimos, que garantizan que solo haya una instancia de la clase en toda la aplicación.
+En Kotlin, puedes implementar el patrón Singleton con una declaración `object`, que garantiza que solo haya una instancia en toda la aplicación.
+
+Una variante muy utilizada es el `companion object`, un objeto declarado dentro de una clase cuyos miembros se pueden usar a través del nombre de la clase, de forma parecida a los miembros `static` de Java:
+
+```kotlin
+class Usuario private constructor(val nombre: String) {
+    companion object {
+        fun crear(nombre: String) = Usuario(nombre.trim())
+    }
+}
+
+val usuario = Usuario.crear("  Ana ")
+```
 
 **Usos comunes del patrón Singleton incluyen la creación de objetos de configuración, conexiones a bases de datos y puntos de acceso a servicios globales.**
 :::
