@@ -1,0 +1,668 @@
+---
+sidebar_position: 9
+title: Ejercicio tipo examen
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Ejercicio tipo examen: "MeteoHilos", estación meteorológica concurrente
+
+Este ejercicio tiene el mismo formato, contenidos y dificultad que el examen del tema: un proyecto Kotlin con un esqueleto de partida, tres tareas de **hilos y sincronización**, dos de **corrutinas** y una CLI para probarlo rápidamente. Está pensado para resolverse en **100 minutos**. Intenta hacerlo sin mirar la solución, ajustándote a ese tiempo, y usa después la rúbrica para evaluarte.
+
+:::info Cómo se trabaja
+- Crea un proyecto Kotlin con Gradle en IntelliJ y sustituye sus ficheros `build.gradle.kts` y `settings.gradle.kts` por los del apartado [Código de partida](#código-de-partida) (incluyen la dependencia `kotlinx-coroutines-core`). Copia el esqueleto en `src/main/kotlin/Main.kt`.
+- El `main` (con la validación de argumentos) y varias funciones auxiliares ya están hechos: solo tienes que completar lo marcado con `TODO`.
+- El programa se prueba con los argumentos de cada modo, desde IntelliJ (indicándolos en la configuración de ejecución) o desde la terminal:
+
+```bash
+./gradlew run --args="<argumentos>"      # Linux / macOS
+.\gradlew.bat run --args="<argumentos>"  # Windows
+```
+
+- Al trabajar con hilos, **la salida no es exactamente igual en cada ejecución**: los ejemplos muestran una ejecución posible. Lo que sí debe cumplirse siempre son las comprobaciones y los valores que se indican como fijos.
+:::
+
+## Enunciado
+
+### Contexto
+
+La red de estaciones meteorológicas **MeteoGalicia Junior** quiere renovar su software. Por un lado, cada estación tiene varios **sensores** que miden la temperatura por **rondas**: en cada ronda todos los sensores miden una vez, y ninguno empieza la ronda siguiente hasta que han terminado todos. Mientras tanto, un **panel** muestra el estado de las medidas. Por otro lado, la web publica una **previsión** por ciudad a partir de tres fuentes de datos (algunas fallan o son lentas) y vigila las lecturas en directo para lanzar **avisos de calor**.
+
+El programa tiene dos modos:
+
+| Modo | Descripción |
+|------|-------------|
+| `sensores <numSensores> <rondas>` | Simulación con hilos: sensores sincronizados por rondas, un registro compartido y un panel. |
+| `prevision <numCiudades>` | Previsión y avisos con corrutinas para las primeras `numCiudades` ciudades de la lista (de 1 a 7). |
+
+### Material proporcionado
+
+El esqueleto de `Main.kt` ya incluye:
+
+| Elemento | Descripción |
+|----------|-------------|
+| `data class Medida`, `medir(sensor, ronda)` | La medida de un sensor y la temperatura que mide en cada ronda (siempre la misma para el mismo sensor y ronda). |
+| `CIUDADES` | Las 7 ciudades: Vigo, Ourense, Lugo, Coruna, Santiago, Ferrol y Pontevedra. |
+| `fuenteAemet(i)`, `fuenteSatelite(i)`, `fuenteVecinal(i)` | Funciones `suspend` que dan la previsión de la ciudad `i` según tres fuentes. AEMET tarda 100 ms; el satélite, 200 ms (pero 1000 ms para algunas ciudades); la estación vecinal, 300 ms, y para algunas ciudades lanza `FuenteCaidaException`. |
+| `lecturasEnDirecto(i)` | `Flow<Double>` que emite 10 lecturas de temperatura de la ciudad `i`, una cada 30 ms. |
+| `UMBRAL_AVISO`, `fmt(valor)` | Umbral de aviso de calor (30 grados) y formato con 2 decimales. |
+
+Tienes que completar `Registro`, `sensores`, `prevision` y `consultar`.
+
+### Tareas
+
+**Parte 1: hilos y sincronización**
+
+**Tarea 1. Registro de medidas (clase `Registro`)**
+- Guarda las medidas en una lista protegida con un **`ReentrantReadWriteLock`**: `anadir` usa el bloqueo de **escritura** y las consultas (`total`, `media`, `maximo` y `mediaRonda`), el de **lectura**, de modo que varias consultas puedan hacerse a la vez.
+- Si no hay medidas, `media` y `maximo` devuelven 0.
+
+**Tarea 2. Sensores sincronizados por rondas (función `sensores`)**
+- Lanza **un hilo por sensor**. En cada ronda, el sensor tarda entre 5 y 30 ms en medir (al azar), añade su medida al registro (con el valor de `medir`) y espera a los demás.
+- La espera se hace con una **`CyclicBarrier`**. Su acción de barrera (que se ejecuta una sola vez por ronda, cuando han llegado todos) muestra `Ronda <r> completa: media <media de la ronda>`.
+
+**Tarea 3. Panel y cierre (función `sensores`)**
+- Un hilo **panel** muestra cada 50 ms `[panel] medidas: <total> | media: <media>` hasta que lo **interrumpen**. Al terminar, muestra `[panel] apagado`.
+- El hilo principal espera a todos los sensores, interrumpe el panel, espera a que termine y muestra el resumen: total de medidas, media global, máximo y una comprobación (`OK` si hay `numSensores × rondas` medidas y el máximo es `medir(numSensores, rondas)`).
+
+**Parte 2: corrutinas**
+
+**Tarea 4. Previsión con varias fuentes (funciones `consultar` y `prevision`)**
+- `consultar` ejecuta una fuente con un **límite de 500 ms** (`withTimeout`). Si tarda más o lanza `FuenteCaidaException`, muestra por qué se descarta y devuelve `null`.
+- `prevision` calcula **todas las ciudades a la vez** y, dentro de cada ciudad, consulta **las tres fuentes a la vez** (`async` y `awaitAll`). La previsión de una ciudad es la media de las fuentes que no se han descartado. Muestra la previsión de cada ciudad y el tiempo total, que debe estar cerca del de la fuente más lenta admitida (unos 500 ms), no de la suma de todas.
+
+**Tarea 5. Avisos de calor (función `prevision`)**
+- Para cada ciudad, una corrutina recoge sus `lecturasEnDirecto` con un *pipeline* de operadores: se queda con las lecturas de al menos `UMBRAL_AVISO` grados, las convierte en el texto `AVISO <ciudad>: <temperatura> grados` y toma **solo las dos primeras**.
+- Todas las ciudades se vigilan a la vez y los avisos se guardan en una lista compartida protegida con un **`Mutex`**. Al final se muestran ordenados alfabéticamente.
+
+### Ejemplos de ejecución (CLI)
+
+```text title="Sensores (las líneas del panel cambian en cada ejecución; las de las rondas y el resumen no)"
+$ ./gradlew run --args="sensores 4 5"
+[panel] medidas: 0 | media: 0.00
+Ronda 1 completa: media 19.25
+Ronda 2 completa: media 19.75
+[panel] medidas: 8 | media: 19.50
+Ronda 3 completa: media 20.25
+Ronda 4 completa: media 20.75
+[panel] medidas: 16 | media: 20.00
+Ronda 5 completa: media 21.25
+[panel] apagado
+Medidas: 20 de 20 | media global: 20.25 | maximo: 23.50
+Comprobacion: OK
+```
+
+```text title="Previsión de las 7 ciudades (el orden de los mensajes de fuentes descartadas puede cambiar)"
+$ ./gradlew run --args="prevision 7"
+[Lugo] fuente vecinal descartada: estacion vecinal de Lugo sin conexion
+[Ferrol] fuente vecinal descartada: estacion vecinal de Ferrol sin conexion
+[Coruna] fuente satelite descartada: mas de 500 ms
+Vigo       prevision: 13.00
+Ourense    prevision: 14.00
+Lugo       prevision: 14.50
+Coruna     prevision: 16.00
+Santiago   prevision: 17.00
+Ferrol     prevision: 17.50
+Pontevedra prevision: 19.00
+Previsiones calculadas en 528 ms
+Avisos (14):
+  AVISO Coruna: 30.50 grados
+  AVISO Coruna: 32.00 grados
+  AVISO Ferrol: 31.00 grados
+  AVISO Ferrol: 32.50 grados
+  AVISO Lugo: 31.00 grados
+  AVISO Lugo: 32.50 grados
+  AVISO Ourense: 30.00 grados
+  AVISO Ourense: 31.50 grados
+  AVISO Pontevedra: 30.50 grados
+  AVISO Pontevedra: 32.00 grados
+  AVISO Santiago: 30.00 grados
+  AVISO Santiago: 31.50 grados
+  AVISO Vigo: 30.50 grados
+  AVISO Vigo: 32.00 grados
+```
+
+### Requisitos de implementación
+- No modificar las funciones y clases proporcionadas.
+- No usar `Thread.sleep` en la parte de corrutinas.
+- El programa debe terminar solo en los dos modos.
+
+## Código de partida
+
+<Tabs>
+<TabItem value="main" label="Main.kt" default>
+
+```kotlin title="src/main/kotlin/Main.kt"
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.Locale
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.thread
+import kotlin.concurrent.write
+import kotlin.random.Random
+import kotlin.system.exitProcess
+
+// =====================================================================
+//  METEOHILOS - Ejercicio tipo examen (Tema 2)
+//  Completa las funciones y clases marcadas con TODO. El resto del
+//  código se proporciona hecho y no es necesario modificarlo.
+// =====================================================================
+
+data class Medida(val sensor: Int, val ronda: Int, val valor: Double)
+
+// Temperatura que mide un sensor en una ronda (siempre la misma para el mismo sensor y ronda)
+fun medir(sensor: Int, ronda: Int): Double = 15.0 + sensor * 1.5 + ronda * 0.5
+
+fun fmt(valor: Double): String = "%.2f".format(Locale.ROOT, valor)
+
+val CIUDADES = listOf("Vigo", "Ourense", "Lugo", "Coruna", "Santiago", "Ferrol", "Pontevedra")
+
+class FuenteCaidaException(mensaje: String) : Exception(mensaje)
+
+// Tres fuentes de previsión para la ciudad número 'i' de CIUDADES:
+suspend fun fuenteAemet(i: Int): Double {
+    delay(100)
+    return 12.0 + i
+}
+
+suspend fun fuenteSatelite(i: Int): Double {
+    delay(if (i % 4 == 3) 1000 else 200) // A veces el satélite tarda muchísimo
+    return 13.0 + i
+}
+
+suspend fun fuenteVecinal(i: Int): Double {
+    delay(300)
+    if (i % 3 == 2) throw FuenteCaidaException("estacion vecinal de ${CIUDADES[i]} sin conexion")
+    return 14.0 + i
+}
+
+// Emite 10 lecturas en directo de la ciudad número 'i', una cada 30 ms
+fun lecturasEnDirecto(i: Int): Flow<Double> = flow {
+    for (n in 1..10) {
+        delay(30)
+        emit(20.0 + i + n * 1.5)
+    }
+}
+
+const val UMBRAL_AVISO = 30.0
+
+fun main(args: Array<String>) {
+    when (args.firstOrNull()) {
+        "sensores" -> {
+            val sensores = args.getOrNull(1)?.toIntOrNull()
+            val rondas = args.getOrNull(2)?.toIntOrNull()
+            if (args.size == 3 && sensores != null && sensores > 0 && rondas != null && rondas > 0) {
+                sensores(sensores, rondas)
+            } else {
+                uso()
+            }
+        }
+        "prevision" -> {
+            val n = args.getOrNull(1)?.toIntOrNull()
+            if (args.size == 2 && n != null && n in 1..CIUDADES.size) runBlocking { prevision(n) } else uso()
+        }
+        else -> uso()
+    }
+}
+
+fun uso(): Nothing {
+    System.err.println(
+        """
+        Uso:
+          sensores <numSensores> <rondas>
+          prevision <numCiudades 1-${CIUDADES.size}>
+        """.trimIndent()
+    )
+    exitProcess(2)
+}
+
+// ===================== Tarea 1: registro con lock de lectura/escritura =====================
+class Registro {
+    fun anadir(m: Medida) {
+        // TODO
+    }
+
+    fun total(): Int {
+        // TODO
+        return 0
+    }
+
+    fun media(): Double {
+        // TODO
+        return 0.0
+    }
+
+    fun maximo(): Double {
+        // TODO
+        return 0.0
+    }
+
+    // Media de las medidas de una ronda
+    fun mediaRonda(ronda: Int): Double {
+        // TODO
+        return 0.0
+    }
+}
+
+// ===================== Tareas 2 y 3: sensores, barrera y panel =====================
+fun sensores(numSensores: Int, rondas: Int) {
+    // TODO
+}
+
+// ===================== Tareas 4 y 5: previsión y avisos con corrutinas =====================
+suspend fun prevision(numCiudades: Int) {
+    // TODO
+}
+
+// Ejecuta una fuente con un límite de 500 ms; devuelve null (y avisa) si falla o tarda demasiado
+suspend fun consultar(nombre: String, i: Int, fuente: suspend () -> Double): Double? {
+    // TODO
+    return null
+}
+```
+
+</TabItem>
+<TabItem value="build" label="build.gradle.kts">
+
+```kotlin title="build.gradle.kts"
+plugins {
+    kotlin("jvm") version "2.2.20"
+    application
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+application {
+    mainClass.set("MainKt")
+}
+```
+
+</TabItem>
+<TabItem value="settings" label="settings.gradle.kts">
+
+```kotlin title="settings.gradle.kts"
+rootProject.name = "meteohilos"
+```
+
+</TabItem>
+</Tabs>
+
+## Rúbrica
+
+Cada criterio tiene tres niveles con su puntuación. Un criterio no implementado o que no funciona se puntúa con 0.
+
+| Criterio | Completo | Casi completo | Parcial |
+|----------|----------|---------------|---------|
+| **T1. Registro (2 puntos)** | | | |
+| Bloqueos de lectura y escritura | **1.5** · `ReentrantReadWriteLock` con bloqueo de escritura en `anadir` y de lectura en **todas** las consultas. | **1** · Protege bien los datos, pero con un único lock para todo (`synchronized` o `ReentrantLock`), o se deja alguna consulta sin bloqueo. | **0.5** · Usa el bloqueo de lectura para escribir, o deja `anadir` sin proteger. |
+| Cálculos | **0.5** · Total, media, máximo y media por ronda correctos, también sin medidas. | **0.35** · Correctos, pero fallan sin medidas (división por cero o excepción). | **0.15** · Algún cálculo es incorrecto. |
+| **T2. Sensores y barrera (2.5 puntos)** | | | |
+| Hilos sincronizados por rondas | **1.5** · Un hilo por sensor; en cada ronda mide, añade la medida y espera en una `CyclicBarrier` de `numSensores` participantes. | **1** · Funciona, pero sincroniza las rondas con otro mecanismo (un `CountDownLatch` nuevo por ronda, por ejemplo). | **0.5** · Los sensores no se esperan entre rondas o la barrera tiene un número de participantes incorrecto (el programa se bloquea). |
+| Acción de barrera | **1** · El resumen de cada ronda se muestra **una sola vez**, desde la acción de la barrera, con la media correcta. | **0.7** · Se muestra una vez por ronda, pero desde uno de los sensores (por ejemplo, el sensor 1 después de `await()`), con riesgo de leer datos de la ronda siguiente. | **0.3** · Lo muestran todos los sensores o la media es incorrecta. |
+| **T3. Panel y cierre (1.5 puntos)** | | | |
+| Panel interrumpible | **1** · Bucle que comprueba la interrupción y captura `InterruptedException` del `sleep` para terminar limpiamente. | **0.7** · Termina, pero con una bandera propia (`@Volatile`) en lugar de con interrupciones, o sin capturar bien la excepción. | **0.3** · El panel no termina (el programa no acaba) o se detiene con `stop()`/`System.exit`. |
+| Orden de cierre y resumen | **0.5** · `join` de los sensores, `interrupt()` y `join` del panel, y resumen con comprobación `OK`. | **0.35** · Correcto, pero el resumen se muestra antes de que el panel termine. | **0.15** · No espera a los sensores antes de mostrar el resumen. |
+| **T4. Previsión (2.5 puntos)** | | | |
+| Paralelismo con `async` | **1.5** · Ciudades y fuentes en paralelo con `async`/`awaitAll` dentro de un ámbito estructurado: el tiempo total ronda los 500 ms. | **1** · Las ciudades van en paralelo pero las fuentes de cada ciudad, una tras otra (o al revés): el tiempo es mayor. | **0.5** · Todo secuencial o con `GlobalScope`. |
+| `consultar` | **1** · `withTimeout(500)`, captura `TimeoutCancellationException` y `FuenteCaidaException`, devuelve `null` y la media usa solo las fuentes válidas. | **0.7** · Funciona, pero captura `Exception` en general o la media incluye fuentes descartadas. | **0.3** · Sin límite de tiempo, o un fallo de una fuente cancela toda la previsión. |
+| **T5. Avisos (1.5 puntos)** | | | |
+| *Pipeline* de `Flow` | **1** · `filter`, `map` y `take(2)` sobre `lecturasEnDirecto` y `collect` al final. | **0.7** · Resultado correcto, pero filtrando o contando dentro del `collect` en lugar de con operadores. | **0.3** · Recoge todas las lecturas sin filtrar o no limita a dos avisos. |
+| Concurrencia y `Mutex` | **0.5** · Una corrutina por ciudad, avisos añadidos con `mutex.withLock { }` y mostrados ordenados. | **0.35** · Correcto, pero las ciudades se vigilan una tras otra. | **0.15** · Lista compartida sin protección. |
+| **Total: 10 puntos** | | | |
+
+## Solución
+
+<details>
+<summary>Ver la solución</summary>
+
+<Tabs>
+<TabItem value="claves" label="Claves" default>
+
+- **Lock de lectura/escritura:** varias lecturas pueden ir a la vez (el panel y la acción de la barrera leen mientras otros leen), pero una escritura necesita exclusividad. Es útil cuando hay muchas más lecturas que escrituras.
+- **Acción de la `CyclicBarrier`:** la ejecuta el último hilo en llegar, **antes** de liberar a los demás. Por eso es el sitio seguro para resumir la ronda: ningún sensor puede haber empezado la siguiente. La variable `rondaActual` solo la usa esa acción, y la barrera garantiza que los cambios son visibles entre hilos.
+- **Interrupción:** `interrupt()` no detiene el hilo; activa una marca y, si el hilo está en `sleep`, lanza `InterruptedException`. El panel comprueba ambas cosas para terminar en cualquier caso.
+- **Descomposición en paralelo:** con un `async` por fuente dentro de un `async` por ciudad, el tiempo total es el de la fuente más lenta admitida (500 ms, donde se corta la del satélite), no la suma de todas (unos 4 segundos).
+- **Fallos controlados:** `consultar` captura las excepciones **dentro** de cada `async`. Si una saliera fuera, la concurrencia estructurada cancelaría el resto de fuentes y ciudades.
+- **`Flow` frío:** cada `collect` vuelve a ejecutar el `flow { }`, y `take(2)` cancela el flujo en cuanto tiene dos avisos, así que no se espera a las 10 lecturas.
+
+</TabItem>
+<TabItem value="hilos" label="Tareas 1-3: hilos">
+
+```kotlin title="Main.kt (registro y sensores)"
+// ===================== Tarea 1: registro con lock de lectura/escritura =====================
+class Registro {
+    private val medidas = mutableListOf<Medida>()
+    private val lock = ReentrantReadWriteLock()
+
+    fun anadir(m: Medida) = lock.write { medidas.add(m) }
+
+    fun total(): Int = lock.read { medidas.size }
+
+    fun media(): Double = lock.read { if (medidas.isEmpty()) 0.0 else medidas.sumOf { it.valor } / medidas.size }
+
+    fun maximo(): Double = lock.read { medidas.maxOfOrNull { it.valor } ?: 0.0 }
+
+    fun mediaRonda(ronda: Int): Double = lock.read {
+        medidas.filter { it.ronda == ronda }.map { it.valor }.average()
+    }
+}
+
+// ===================== Tareas 2 y 3: sensores, barrera y panel =====================
+fun sensores(numSensores: Int, rondas: Int) {
+    val registro = Registro()
+    var rondaActual = 1 // Solo la modifica la acción de la barrera
+
+    // La acción de la barrera la ejecuta el último hilo en llegar, cuando ya han medido todos
+    val barrera = CyclicBarrier(numSensores) {
+        println("Ronda $rondaActual completa: media ${fmt(registro.mediaRonda(rondaActual))}")
+        rondaActual++
+    }
+
+    val hilosSensores = (1..numSensores).map { s ->
+        thread(name = "sensor-$s") {
+            for (r in 1..rondas) {
+                Thread.sleep(Random.nextLong(5, 30)) // Cada sensor tarda distinto en medir
+                registro.anadir(Medida(s, r, medir(s, r)))
+                barrera.await() // Nadie empieza la ronda siguiente hasta que todos han medido
+            }
+        }
+    }
+
+    // Panel: muestra el estado cada 50 ms hasta que lo interrumpen
+    val panel = thread(name = "panel") {
+        try {
+            while (!Thread.currentThread().isInterrupted) {
+                println("[panel] medidas: ${registro.total()} | media: ${fmt(registro.media())}")
+                Thread.sleep(50)
+            }
+        } catch (e: InterruptedException) {
+            // La interrupción llega mientras duerme: salimos del bucle
+        }
+        println("[panel] apagado")
+    }
+
+    hilosSensores.forEach { it.join() }
+    panel.interrupt()
+    panel.join()
+
+    val esperadas = numSensores * rondas
+    println("Medidas: ${registro.total()} de $esperadas | media global: ${fmt(registro.media())} | maximo: ${fmt(registro.maximo())}")
+    val correcto = registro.total() == esperadas && registro.maximo() == medir(numSensores, rondas)
+    println(if (correcto) "Comprobacion: OK" else "Comprobacion: ERROR")
+}
+```
+
+</TabItem>
+<TabItem value="corrutinas" label="Tareas 4-5: corrutinas">
+
+```kotlin title="Main.kt (previsión y avisos)"
+// ===================== Tareas 4 y 5: previsión y avisos con corrutinas =====================
+suspend fun prevision(numCiudades: Int) = coroutineScope {
+    val inicio = System.currentTimeMillis()
+
+    // Tarea 4: todas las ciudades y, dentro de cada una, sus tres fuentes en paralelo
+    val previsiones = (0 until numCiudades).map { i ->
+        async {
+            val fuentes = listOf(
+                async { consultar("AEMET", i) { fuenteAemet(i) } },
+                async { consultar("satelite", i) { fuenteSatelite(i) } },
+                async { consultar("vecinal", i) { fuenteVecinal(i) } },
+            )
+            val valores = fuentes.awaitAll().filterNotNull()
+            CIUDADES[i] to valores.average()
+        }
+    }.awaitAll()
+
+    previsiones.forEach { (ciudad, media) -> println("%-10s prevision: %s".format(ciudad, fmt(media))) }
+    println("Previsiones calculadas en ${System.currentTimeMillis() - inicio} ms")
+
+    // Tarea 5: vigilar las lecturas en directo de todas las ciudades a la vez
+    val avisos = mutableListOf<String>()
+    val mutex = Mutex()
+    (0 until numCiudades).map { i ->
+        launch {
+            lecturasEnDirecto(i)
+                .filter { it >= UMBRAL_AVISO }
+                .map { "AVISO ${CIUDADES[i]}: ${fmt(it)} grados" }
+                .take(2) // Solo los dos primeros avisos de cada ciudad
+                .collect { aviso -> mutex.withLock { avisos.add(aviso) } }
+        }
+    }.joinAll()
+
+    println("Avisos (${avisos.size}):")
+    avisos.sorted().forEach { println("  $it") }
+}
+
+// Ejecuta una fuente con un límite de 500 ms; devuelve null (y avisa) si falla o tarda demasiado
+suspend fun consultar(nombre: String, i: Int, fuente: suspend () -> Double): Double? = try {
+    withTimeout(500) { fuente() }
+} catch (e: TimeoutCancellationException) {
+    println("[${CIUDADES[i]}] fuente $nombre descartada: mas de 500 ms")
+    null
+} catch (e: FuenteCaidaException) {
+    println("[${CIUDADES[i]}] fuente $nombre descartada: ${e.message}")
+    null
+}
+```
+
+</TabItem>
+<TabItem value="completo" label="Main.kt completo">
+
+```kotlin title="src/main/kotlin/Main.kt"
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.Locale
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.thread
+import kotlin.concurrent.write
+import kotlin.random.Random
+import kotlin.system.exitProcess
+
+// =====================================================================
+//  METEOHILOS - Ejercicio tipo examen (Tema 2)
+//  Completa las funciones y clases marcadas con TODO. El resto del
+//  código se proporciona hecho y no es necesario modificarlo.
+// =====================================================================
+
+data class Medida(val sensor: Int, val ronda: Int, val valor: Double)
+
+// Temperatura que mide un sensor en una ronda (siempre la misma para el mismo sensor y ronda)
+fun medir(sensor: Int, ronda: Int): Double = 15.0 + sensor * 1.5 + ronda * 0.5
+
+fun fmt(valor: Double): String = "%.2f".format(Locale.ROOT, valor)
+
+val CIUDADES = listOf("Vigo", "Ourense", "Lugo", "Coruna", "Santiago", "Ferrol", "Pontevedra")
+
+class FuenteCaidaException(mensaje: String) : Exception(mensaje)
+
+// Tres fuentes de previsión para la ciudad número 'i' de CIUDADES:
+suspend fun fuenteAemet(i: Int): Double {
+    delay(100)
+    return 12.0 + i
+}
+
+suspend fun fuenteSatelite(i: Int): Double {
+    delay(if (i % 4 == 3) 1000 else 200) // A veces el satélite tarda muchísimo
+    return 13.0 + i
+}
+
+suspend fun fuenteVecinal(i: Int): Double {
+    delay(300)
+    if (i % 3 == 2) throw FuenteCaidaException("estacion vecinal de ${CIUDADES[i]} sin conexion")
+    return 14.0 + i
+}
+
+// Emite 10 lecturas en directo de la ciudad número 'i', una cada 30 ms
+fun lecturasEnDirecto(i: Int): Flow<Double> = flow {
+    for (n in 1..10) {
+        delay(30)
+        emit(20.0 + i + n * 1.5)
+    }
+}
+
+const val UMBRAL_AVISO = 30.0
+
+fun main(args: Array<String>) {
+    when (args.firstOrNull()) {
+        "sensores" -> {
+            val sensores = args.getOrNull(1)?.toIntOrNull()
+            val rondas = args.getOrNull(2)?.toIntOrNull()
+            if (args.size == 3 && sensores != null && sensores > 0 && rondas != null && rondas > 0) {
+                sensores(sensores, rondas)
+            } else {
+                uso()
+            }
+        }
+        "prevision" -> {
+            val n = args.getOrNull(1)?.toIntOrNull()
+            if (args.size == 2 && n != null && n in 1..CIUDADES.size) runBlocking { prevision(n) } else uso()
+        }
+        else -> uso()
+    }
+}
+
+fun uso(): Nothing {
+    System.err.println(
+        """
+        Uso:
+          sensores <numSensores> <rondas>
+          prevision <numCiudades 1-${CIUDADES.size}>
+        """.trimIndent()
+    )
+    exitProcess(2)
+}
+
+// ===================== Tarea 1: registro con lock de lectura/escritura =====================
+class Registro {
+    private val medidas = mutableListOf<Medida>()
+    private val lock = ReentrantReadWriteLock()
+
+    fun anadir(m: Medida) = lock.write { medidas.add(m) }
+
+    fun total(): Int = lock.read { medidas.size }
+
+    fun media(): Double = lock.read { if (medidas.isEmpty()) 0.0 else medidas.sumOf { it.valor } / medidas.size }
+
+    fun maximo(): Double = lock.read { medidas.maxOfOrNull { it.valor } ?: 0.0 }
+
+    fun mediaRonda(ronda: Int): Double = lock.read {
+        medidas.filter { it.ronda == ronda }.map { it.valor }.average()
+    }
+}
+
+// ===================== Tareas 2 y 3: sensores, barrera y panel =====================
+fun sensores(numSensores: Int, rondas: Int) {
+    val registro = Registro()
+    var rondaActual = 1 // Solo la modifica la acción de la barrera
+
+    // La acción de la barrera la ejecuta el último hilo en llegar, cuando ya han medido todos
+    val barrera = CyclicBarrier(numSensores) {
+        println("Ronda $rondaActual completa: media ${fmt(registro.mediaRonda(rondaActual))}")
+        rondaActual++
+    }
+
+    val hilosSensores = (1..numSensores).map { s ->
+        thread(name = "sensor-$s") {
+            for (r in 1..rondas) {
+                Thread.sleep(Random.nextLong(5, 30)) // Cada sensor tarda distinto en medir
+                registro.anadir(Medida(s, r, medir(s, r)))
+                barrera.await() // Nadie empieza la ronda siguiente hasta que todos han medido
+            }
+        }
+    }
+
+    // Panel: muestra el estado cada 50 ms hasta que lo interrumpen
+    val panel = thread(name = "panel") {
+        try {
+            while (!Thread.currentThread().isInterrupted) {
+                println("[panel] medidas: ${registro.total()} | media: ${fmt(registro.media())}")
+                Thread.sleep(50)
+            }
+        } catch (e: InterruptedException) {
+            // La interrupción llega mientras duerme: salimos del bucle
+        }
+        println("[panel] apagado")
+    }
+
+    hilosSensores.forEach { it.join() }
+    panel.interrupt()
+    panel.join()
+
+    val esperadas = numSensores * rondas
+    println("Medidas: ${registro.total()} de $esperadas | media global: ${fmt(registro.media())} | maximo: ${fmt(registro.maximo())}")
+    val correcto = registro.total() == esperadas && registro.maximo() == medir(numSensores, rondas)
+    println(if (correcto) "Comprobacion: OK" else "Comprobacion: ERROR")
+}
+
+// ===================== Tareas 4 y 5: previsión y avisos con corrutinas =====================
+suspend fun prevision(numCiudades: Int) = coroutineScope {
+    val inicio = System.currentTimeMillis()
+
+    // Tarea 4: todas las ciudades y, dentro de cada una, sus tres fuentes en paralelo
+    val previsiones = (0 until numCiudades).map { i ->
+        async {
+            val fuentes = listOf(
+                async { consultar("AEMET", i) { fuenteAemet(i) } },
+                async { consultar("satelite", i) { fuenteSatelite(i) } },
+                async { consultar("vecinal", i) { fuenteVecinal(i) } },
+            )
+            val valores = fuentes.awaitAll().filterNotNull()
+            CIUDADES[i] to valores.average()
+        }
+    }.awaitAll()
+
+    previsiones.forEach { (ciudad, media) -> println("%-10s prevision: %s".format(ciudad, fmt(media))) }
+    println("Previsiones calculadas en ${System.currentTimeMillis() - inicio} ms")
+
+    // Tarea 5: vigilar las lecturas en directo de todas las ciudades a la vez
+    val avisos = mutableListOf<String>()
+    val mutex = Mutex()
+    (0 until numCiudades).map { i ->
+        launch {
+            lecturasEnDirecto(i)
+                .filter { it >= UMBRAL_AVISO }
+                .map { "AVISO ${CIUDADES[i]}: ${fmt(it)} grados" }
+                .take(2) // Solo los dos primeros avisos de cada ciudad
+                .collect { aviso -> mutex.withLock { avisos.add(aviso) } }
+        }
+    }.joinAll()
+
+    println("Avisos (${avisos.size}):")
+    avisos.sorted().forEach { println("  $it") }
+}
+
+// Ejecuta una fuente con un límite de 500 ms; devuelve null (y avisa) si falla o tarda demasiado
+suspend fun consultar(nombre: String, i: Int, fuente: suspend () -> Double): Double? = try {
+    withTimeout(500) { fuente() }
+} catch (e: TimeoutCancellationException) {
+    println("[${CIUDADES[i]}] fuente $nombre descartada: mas de 500 ms")
+    null
+} catch (e: FuenteCaidaException) {
+    println("[${CIUDADES[i]}] fuente $nombre descartada: ${e.message}")
+    null
+}
+```
+
+</TabItem>
+</Tabs>
+
+</details>
