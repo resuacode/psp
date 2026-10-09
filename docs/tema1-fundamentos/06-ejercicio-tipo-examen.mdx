@@ -1,0 +1,585 @@
+---
+sidebar_position: 7
+title: Ejercicio tipo examen
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Ejercicio tipo examen: "Ábaco", calculadora con procesos trabajadores
+
+Este ejercicio tiene el mismo formato, contenidos y dificultad que el examen del tema: un único programa Kotlin que hace de proceso padre o de proceso hijo, un esqueleto de partida con funciones por completar y una CLI para probarlo rápidamente. Está pensado para resolverse en **100 minutos**. Intenta hacerlo sin mirar la solución, ajustándote a ese tiempo, y usa después la rúbrica para evaluarte.
+
+:::info Cómo se trabaja
+- Todo el ejercicio es **un único programa Kotlin** (`Main.kt`). Según el primer argumento, el programa hace de proceso **coordinador** (padre) o de proceso **trabajador** (hijo). Los trabajadores son nuevas JVM que ejecutan este mismo programa, así que funciona igual en Linux, macOS y Windows.
+- Se proporciona un **esqueleto** con el `main`, la función `procesoJava(...)` (prepara un `ProcessBuilder` que lanza este mismo programa con los argumentos indicados) y varias funciones auxiliares ya hechas. Solo tienes que completar las funciones marcadas con `TODO`.
+- Puedes probarlo desde IntelliJ (indicando los argumentos en la configuración de ejecución) o generando un `.jar`:
+
+```bash
+kotlinc Main.kt -include-runtime -d abaco.jar
+java -jar abaco.jar <argumentos>
+```
+:::
+
+## Enunciado
+
+### Contexto
+
+La academia de matemáticas **Pitágoras** genera cada semana miles de operaciones para las fichas de sus alumnos y quiere calcular automáticamente las soluciones. Para no depender de un único proceso que, si falla, lo detenga todo, han decidido montar **Ábaco**: un coordinador que reparte las operaciones entre varios **procesos trabajadores** que se mantienen vivos durante todo el cálculo. El coordinador y cada trabajador **conversan por tuberías**: el coordinador escribe una operación en la entrada estándar del trabajador y lee la respuesta de su salida estándar.
+
+El programa tiene dos modos, que se eligen con el primer argumento:
+
+| Modo | Papel | Descripción |
+|------|-------|-------------|
+| `trabajador <id>` | Proceso hijo | Atiende operaciones que llegan por su entrada estándar, de una en una, hasta que le piden que termine. |
+| `calcular <fichero> <numTrabajadores> <decimales>` | Proceso padre | Lanza los trabajadores, les reparte las operaciones del fichero por turnos, relanza los que caigan y los cierra de forma ordenada. |
+
+### Protocolo entre coordinador y trabajador
+
+Cada mensaje es **una línea de texto**. Por cada línea que recibe, el trabajador responde con exactamente una línea (salvo con `ROMPER`).
+
+| El coordinador envía | El trabajador responde | Y además... |
+|----------------------|------------------------|-------------|
+| Una operación, por ejemplo `SUMA 3 4` | El resultado de `resolver()`: `OK 7.00` o `ERROR <motivo>` | Cuenta la respuesta como correcta o como error. |
+| `FIN` | `STATS <id> <correctas> <errores>` | Termina con código 0. |
+| `ROMPER` | *(nada)* | Simula un fallo grave: termina con código 3. |
+
+### Tareas
+
+**Tarea 1. Proceso trabajador (función `trabajador`)**
+- Lee líneas por su entrada estándar hasta `FIN`, `ROMPER` o el final de la entrada (EOF; en ese caso termina con código 0). Las líneas vacías se ignoran.
+- Responde según el protocolo. Las operaciones se resuelven con la función `resolver()` del esqueleto, usando el número de decimales que recibe en la **variable de entorno** `ABACO_DECIMALES` (2 si no existe).
+- Además de responder, registra cada operación por su **salida de error** con el formato `[T<id>] <operacion> -> <respuesta>`. Para `ROMPER` escribe `[T<id>] fallo grave simulado`. La salida estándar queda reservada para el protocolo.
+
+**Tarea 2. Lanzar un trabajador (función `lanzarTrabajador`)**
+- Crea el proceso con `procesoJava("trabajador", id)` y le pasa los decimales mediante `environment()`.
+- Su salida de error se añade (sin borrar lo anterior) al fichero `logs/trabajador-<id>.log`. La entrada y la salida estándar se quedan como tuberías, porque son las que usa el protocolo.
+- Devuelve un `Trabajador` (clase del esqueleto que ya prepara un `escritor` hacia la entrada del proceso y un `lector` desde su salida).
+
+**Tarea 3. Petición y respuesta (funciones `pedir` y `calcular`)**
+- `pedir` envía una línea al trabajador y devuelve la línea que este responde, o `null` si el trabajador ha caído (su salida se ha cerrado o la tubería está rota).
+- `calcular` comprueba que el fichero existe (si no, error y código 1), crea la carpeta `logs`, lanza los trabajadores y reparte las operaciones (las líneas no vacías del fichero) **por turnos**: la primera al trabajador 1, la segunda al 2... y vuelta a empezar. Por cada operación muestra `[T<id>] <operacion> -> <respuesta>`.
+
+**Tarea 4. Trabajadores caídos (función `calcular`)**
+- Si `pedir` devuelve `null`, el coordinador obtiene el código de salida del trabajador caído, lanza uno nuevo con el **mismo id** en su lugar, cuenta la caída y lo muestra: `[T<id>] <operacion> -> trabajador caido (codigo <c>), relanzado con PID <pid>`. La operación que lo hizo caer no se repite.
+
+**Tarea 5. Cierre ordenado (funciones `cerrar` y `calcular`)**
+- `cerrar` envía `FIN` al trabajador y recoge su línea `STATS`. Si a los 2 segundos el proceso sigue vivo, lo destruye a la fuerza. Devuelve la línea de estadísticas junto con el código de salida.
+- Al terminar el reparto, `calcular` cierra todos los trabajadores, muestra el resumen y el número total de operaciones y de caídas. No debe quedar ningún trabajador vivo.
+
+### Códigos de salida
+
+| Código | Significado |
+|--------|-------------|
+| 0 | Correcto (también el trabajador que termina con `FIN` o EOF) |
+| 1 | El fichero de operaciones no existe |
+| 2 | Argumentos incorrectos (ya resuelto en el esqueleto) |
+| 3 | El trabajador ha recibido `ROMPER` |
+
+### Ejemplos de ejecución (CLI)
+
+Un trabajador se puede probar solo, escribiendo las operaciones a mano. Como en la consola se ven a la vez su salida estándar y su salida de error, cada operación aparece dos veces: primero el registro (`[T1] ...`) y después la respuesta del protocolo.
+
+```text title="Modo trabajador (el código de salida se ve con echo $? en bash o echo $LASTEXITCODE en PowerShell)"
+$ java -jar abaco.jar trabajador 1
+SUMA 3 4
+[T1] SUMA 3 4 -> OK 7.00
+OK 7.00
+DIV 1 0
+[T1] DIV 1 0 -> ERROR division por cero
+ERROR division por cero
+HOLA
+[T1] HOLA -> ERROR formato incorrecto
+ERROR formato incorrecto
+FIN
+STATS 1 1 2                                     (código 0)
+```
+
+```text title="Modo calcular con 3 trabajadores y 2 decimales (los PID cambiarán)"
+$ java -jar abaco.jar calcular operaciones.txt 3 2
+Lanzados 3 trabajadores (PID 99877, 99887, 99889)
+[T1] SUMA 3 4 -> OK 7.00
+[T2] MULT 2.5 4 -> OK 10.00
+[T3] DIV 10 4 -> OK 2.50
+[T1] DIV 7 0 -> ERROR division por cero
+[T2] RESTA 10 15 -> OK -5.00
+[T3] POTENCIA 2 8 -> ERROR operacion desconocida
+[T1] ROMPER -> trabajador caido (codigo 3), relanzado con PID 99934
+[T2] SUMA 1 1 -> OK 2.00
+[T3] MULT 3 3 -> OK 9.00
+[T1] DIV 1 3 -> OK 0.33
+Resumen:
+  STATS 1 1 0 (codigo 0)
+  STATS 2 3 0 (codigo 0)
+  STATS 3 2 1 (codigo 0)
+Operaciones: 10, trabajadores caidos: 1
+```
+
+```text title="logs/trabajador-1.log"
+[T1] SUMA 3 4 -> OK 7.00
+[T1] DIV 7 0 -> ERROR division por cero
+[T1] fallo grave simulado
+[T1] DIV 1 3 -> OK 0.33
+```
+
+### Requisitos de implementación
+- Usar `procesoJava(...)` para crear todos los procesos.
+- No usar hilos.
+- La salida estándar del trabajador solo puede contener mensajes del protocolo; los registros van por la salida de error.
+
+## Código de partida
+
+<Tabs>
+<TabItem value="main" label="Main.kt" default>
+
+```kotlin title="Main.kt"
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.IOException
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+// =====================================================================
+//  ÁBACO - Ejercicio tipo examen (Tema 1)
+//  Completa las funciones marcadas con TODO. El resto del código se
+//  proporciona hecho y no es necesario modificarlo.
+// =====================================================================
+
+const val CLASE_PRINCIPAL = "MainKt" // Clase generada para Main.kt
+
+// Prepara un proceso que ejecuta ESTE MISMO programa con los argumentos indicados
+fun procesoJava(vararg args: String): ProcessBuilder {
+    val java = ProcessHandle.current().info().command().orElse("java")
+    val classpath = System.getProperty("java.class.path")
+    return ProcessBuilder(java, "-cp", classpath, CLASE_PRINCIPAL, *args)
+}
+
+val DIR_LOGS = File("logs")
+
+fun main(args: Array<String>) {
+    when (args.firstOrNull()) {
+        "trabajador" -> {
+            val id = args.getOrNull(1)?.toIntOrNull()
+            if (args.size == 2 && id != null) trabajador(id) else uso()
+        }
+        "calcular" -> {
+            val trabajadores = args.getOrNull(2)?.toIntOrNull()
+            val decimales = args.getOrNull(3)?.toIntOrNull()
+            if (args.size == 4 && trabajadores != null && trabajadores in 1..9 && decimales != null && decimales in 0..6) {
+                calcular(File(args[1]), trabajadores, decimales)
+            } else {
+                uso()
+            }
+        }
+        else -> uso()
+    }
+}
+
+// Muestra la ayuda por la salida de error y termina con código 2
+fun uso(): Nothing {
+    System.err.println(
+        """
+        Uso:
+          trabajador <id>
+          calcular <fichero> <numTrabajadores 1-9> <decimales 0-6>
+        """.trimIndent()
+    )
+    exitProcess(2)
+}
+
+// Resuelve una operación "OPERACION a b" y devuelve la respuesta del protocolo:
+// "OK <resultado>" o "ERROR <motivo>"
+fun resolver(linea: String, decimales: Int): String {
+    val partes = linea.trim().split(Regex("\\s+"))
+    if (partes.size != 3) return "ERROR formato incorrecto"
+    val a = partes[1].toDoubleOrNull()
+    val b = partes[2].toDoubleOrNull()
+    if (a == null || b == null) return "ERROR numero no valido"
+    val resultado = when (partes[0]) {
+        "SUMA" -> a + b
+        "RESTA" -> a - b
+        "MULT" -> a * b
+        "DIV" -> if (b == 0.0) return "ERROR division por cero" else a / b
+        else -> return "ERROR operacion desconocida"
+    }
+    return "OK " + "%.${decimales}f".format(Locale.ROOT, resultado)
+}
+
+// Un trabajador visto desde el coordinador: su proceso y los dos extremos de sus tuberías
+class Trabajador(val id: Int, val proceso: Process) {
+    val escritor: BufferedWriter = proceso.outputStream.bufferedWriter() // Hacia su entrada estándar
+    val lector: BufferedReader = proceso.inputStream.bufferedReader()    // Desde su salida estándar
+}
+
+// ===================== Tarea 1: proceso trabajador =====================
+fun trabajador(id: Int) {
+    // TODO
+}
+
+// ===================== Tarea 2: lanzar un trabajador =====================
+fun lanzarTrabajador(id: Int, decimales: Int): Trabajador {
+    // TODO
+    throw NotImplementedError()
+}
+
+// ===================== Tarea 3: petición y respuesta =====================
+// Envía una línea al trabajador y devuelve su respuesta, o null si el trabajador ha caído
+fun pedir(t: Trabajador, linea: String): String? {
+    // TODO
+    return null
+}
+
+// ===================== Tarea 5: cierre ordenado =====================
+// Pide al trabajador que termine y devuelve su línea de estadísticas (o un aviso si no responde)
+fun cerrar(t: Trabajador): String {
+    // TODO
+    return ""
+}
+
+// ===================== Tareas 3, 4 y 5: coordinador =====================
+fun calcular(fichero: File, numTrabajadores: Int, decimales: Int) {
+    // TODO
+}
+```
+
+</TabItem>
+<TabItem value="operaciones" label="operaciones.txt">
+
+```text title="operaciones.txt"
+SUMA 3 4
+MULT 2.5 4
+DIV 10 4
+DIV 7 0
+RESTA 10 15
+POTENCIA 2 8
+ROMPER
+SUMA 1 1
+MULT 3 3
+DIV 1 3
+```
+
+</TabItem>
+</Tabs>
+
+## Rúbrica
+
+| Criterio | Completo | Parcial | Puntos |
+|----------|----------|---------|--------|
+| **T1. Proceso trabajador** | | | **2.5** |
+| Bucle y protocolo | Lee hasta `FIN`, `ROMPER` o EOF; responde una línea por operación con `resolver()`; `FIN` → `STATS` y código 0; `ROMPER` → código 3. | Falta algún caso, no termina al llegar EOF o los códigos de salida no son los indicados. | 1.5 |
+| Estadísticas, variable de entorno y registro | Cuenta correctas y errores, lee `ABACO_DECIMALES` (2 por defecto) y registra por la salida de error, sin mezclarlo con el protocolo. | Escribe el registro por la salida estándar (rompe el protocolo) o falta alguna de las tres cosas. | 1 |
+| **T2. Lanzar un trabajador** | Usa `procesoJava`, pasa los decimales con `environment()` y añade la salida de error a `logs/trabajador-<id>.log` con `Redirect.appendTo`. | Pasa los decimales como argumento, sobrescribe el log o redirige también la salida estándar. | **1.5** |
+| **T3. Petición y respuesta** | | | **2.5** |
+| `pedir` | Escribe la línea con salto de línea y `flush()`, lee una línea de respuesta y devuelve `null` si la salida se ha cerrado o salta una `IOException`. | Olvida el `flush()` (el programa se bloquea) o no controla la caída del trabajador. | 1.5 |
+| Reparto por turnos | Comprueba el fichero, ignora líneas vacías, reparte con `i % numTrabajadores` y muestra cada respuesta. | Envía todo a un solo trabajador o el reparto no es por turnos. | 1 |
+| **T4. Trabajadores caídos** | Obtiene el código con `waitFor()`, relanza con el mismo id **sustituyéndolo en la lista** y cuenta la caída. | Detecta la caída pero no relanza, o relanza sin sustituirlo (las siguientes operaciones vuelven a fallar). | **1.5** |
+| **T5. Cierre ordenado** | | | **2** |
+| `cerrar` | Envía `FIN`, recoge `STATS`, espera con `waitFor(2, SECONDS)` y usa `destroyForcibly()` si hace falta; devuelve estadísticas y código. | No espera al proceso o no lo fuerza si no responde. | 1.5 |
+| Resumen final | Cierra todos los trabajadores y muestra el resumen y los totales; no queda ningún proceso vivo. | Falta el resumen o quedan trabajadores vivos. | 0.5 |
+| **Total** | | | **10** |
+
+Si un criterio no se ha implementado o no funciona, se puntúa con 0.
+
+## Solución
+
+<details>
+<summary>Ver la solución</summary>
+
+<Tabs>
+<TabItem value="claves" label="Claves" default>
+
+- **Dos canales con funciones distintas:** la salida estándar del trabajador es el canal del **protocolo** (la lee el coordinador) y su salida de error es el canal del **registro** (va a un fichero). Si el trabajador escribiera el registro por la salida estándar, el coordinador leería esas líneas como si fueran respuestas.
+- **`flush()` en los dos sentidos:** el coordinador usa un `BufferedWriter`, así que sin `flush()` la operación se queda en su búfer, el trabajador no recibe nada y ambos se quedan esperando para siempre (*interbloqueo*). En el otro sentido, `println` ya vacía el búfer en cada línea.
+- **Cómo se detecta una caída:** cuando el trabajador termina, su salida estándar se cierra y `readLine()` devuelve `null`. Si el coordinador intentara escribir a un trabajador ya muerto, la escritura lanzaría una `IOException` (tubería rota). `pedir` trata ambos casos devolviendo `null`.
+- **Las estadísticas viven en el proceso:** las correctas y errores que llevaba el T1 original se pierden al caer. Por eso, en el resumen, el T1 relanzado solo cuenta la operación que atendió después. Es una buena muestra de que cada proceso tiene su propia memoria.
+- **Peticiones de una en una:** el coordinador espera cada respuesta antes de enviar la siguiente operación. Si enviara muchas operaciones sin leer las respuestas, el búfer de la tubería de salida del trabajador podría llenarse y bloquear a ambos procesos.
+
+</TabItem>
+<TabItem value="trabajador" label="Tarea 1: trabajador">
+
+```kotlin title="Main.kt (función trabajador)"
+// ===================== Tarea 1: proceso trabajador =====================
+fun trabajador(id: Int) {
+    val decimales = System.getenv("ABACO_DECIMALES")?.toIntOrNull() ?: 2
+    var correctas = 0
+    var errores = 0
+    while (true) {
+        val linea = readLine() ?: break // EOF: el coordinador ha cerrado la tubería
+        when (linea.trim()) {
+            "" -> continue
+            "FIN" -> {
+                println("STATS $id $correctas $errores")
+                exitProcess(0)
+            }
+            "ROMPER" -> {
+                System.err.println("[T$id] fallo grave simulado")
+                exitProcess(3)
+            }
+            else -> {
+                val respuesta = resolver(linea, decimales)
+                if (respuesta.startsWith("OK")) correctas++ else errores++
+                System.err.println("[T$id] $linea -> $respuesta") // Registro: va al log
+                println(respuesta) // Protocolo: va al coordinador (println vacía el búfer)
+            }
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="coordinador" label="Tareas 2-5: coordinador">
+
+```kotlin title="Main.kt (funciones del coordinador)"
+// ===================== Tarea 2: lanzar un trabajador =====================
+fun lanzarTrabajador(id: Int, decimales: Int): Trabajador {
+    val pb = procesoJava("trabajador", id.toString())
+        .redirectError(ProcessBuilder.Redirect.appendTo(File(DIR_LOGS, "trabajador-$id.log")))
+    pb.environment()["ABACO_DECIMALES"] = decimales.toString()
+    return Trabajador(id, pb.start())
+}
+
+// ===================== Tarea 3: petición y respuesta =====================
+// Envía una línea al trabajador y devuelve su respuesta, o null si el trabajador ha caído
+fun pedir(t: Trabajador, linea: String): String? {
+    return try {
+        t.escritor.write(linea)
+        t.escritor.newLine()
+        t.escritor.flush() // Sin flush, el trabajador no recibe nada y ambos se quedan esperando
+        t.lector.readLine() // null si el trabajador ha terminado (fin de su salida)
+    } catch (e: IOException) {
+        null // La tubería está rota: el trabajador ya no existe
+    }
+}
+
+// ===================== Tarea 5: cierre ordenado =====================
+// Pide al trabajador que termine y devuelve su línea de estadísticas (o un aviso si no responde)
+fun cerrar(t: Trabajador): String {
+    val stats = pedir(t, "FIN") ?: "sin estadisticas"
+    if (!t.proceso.waitFor(2, TimeUnit.SECONDS)) {
+        t.proceso.destroyForcibly().waitFor()
+    }
+    return "$stats (codigo ${t.proceso.exitValue()})"
+}
+
+// ===================== Tareas 3, 4 y 5: coordinador =====================
+fun calcular(fichero: File, numTrabajadores: Int, decimales: Int) {
+    if (!fichero.isFile) {
+        System.err.println("No existe el fichero $fichero")
+        exitProcess(1)
+    }
+    DIR_LOGS.mkdirs()
+
+    // Tarea 2: lanzar todos los trabajadores
+    val trabajadores = (1..numTrabajadores).map { lanzarTrabajador(it, decimales) }.toMutableList()
+    println("Lanzados $numTrabajadores trabajadores (PID ${trabajadores.joinToString { it.proceso.pid().toString() }})")
+
+    // Tareas 3 y 4: repartir las operaciones por turnos y relanzar los que caigan
+    var caidas = 0
+    val operaciones = fichero.readLines().filter { it.isNotBlank() }
+    operaciones.forEachIndexed { i, operacion ->
+        val posicion = i % numTrabajadores
+        val t = trabajadores[posicion]
+        val respuesta = pedir(t, operacion)
+        if (respuesta != null) {
+            println("[T${t.id}] $operacion -> $respuesta")
+        } else {
+            val codigo = t.proceso.waitFor()
+            val nuevo = lanzarTrabajador(t.id, decimales)
+            trabajadores[posicion] = nuevo
+            caidas++
+            println("[T${t.id}] $operacion -> trabajador caido (codigo $codigo), relanzado con PID ${nuevo.proceso.pid()}")
+        }
+    }
+
+    // Tarea 5: cerrar todos los trabajadores y mostrar el resumen
+    println("Resumen:")
+    trabajadores.forEach { println("  ${cerrar(it)}") }
+    println("Operaciones: ${operaciones.size}, trabajadores caidos: $caidas")
+}
+```
+
+</TabItem>
+<TabItem value="completo" label="Main.kt completo">
+
+```kotlin title="Main.kt"
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.IOException
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+import kotlin.system.exitProcess
+
+// =====================================================================
+//  ÁBACO - Ejercicio tipo examen (Tema 1)
+//  Completa las funciones marcadas con TODO. El resto del código se
+//  proporciona hecho y no es necesario modificarlo.
+// =====================================================================
+
+const val CLASE_PRINCIPAL = "MainKt" // Clase generada para Main.kt
+
+// Prepara un proceso que ejecuta ESTE MISMO programa con los argumentos indicados
+fun procesoJava(vararg args: String): ProcessBuilder {
+    val java = ProcessHandle.current().info().command().orElse("java")
+    val classpath = System.getProperty("java.class.path")
+    return ProcessBuilder(java, "-cp", classpath, CLASE_PRINCIPAL, *args)
+}
+
+val DIR_LOGS = File("logs")
+
+fun main(args: Array<String>) {
+    when (args.firstOrNull()) {
+        "trabajador" -> {
+            val id = args.getOrNull(1)?.toIntOrNull()
+            if (args.size == 2 && id != null) trabajador(id) else uso()
+        }
+        "calcular" -> {
+            val trabajadores = args.getOrNull(2)?.toIntOrNull()
+            val decimales = args.getOrNull(3)?.toIntOrNull()
+            if (args.size == 4 && trabajadores != null && trabajadores in 1..9 && decimales != null && decimales in 0..6) {
+                calcular(File(args[1]), trabajadores, decimales)
+            } else {
+                uso()
+            }
+        }
+        else -> uso()
+    }
+}
+
+// Muestra la ayuda por la salida de error y termina con código 2
+fun uso(): Nothing {
+    System.err.println(
+        """
+        Uso:
+          trabajador <id>
+          calcular <fichero> <numTrabajadores 1-9> <decimales 0-6>
+        """.trimIndent()
+    )
+    exitProcess(2)
+}
+
+// Resuelve una operación "OPERACION a b" y devuelve la respuesta del protocolo:
+// "OK <resultado>" o "ERROR <motivo>"
+fun resolver(linea: String, decimales: Int): String {
+    val partes = linea.trim().split(Regex("\\s+"))
+    if (partes.size != 3) return "ERROR formato incorrecto"
+    val a = partes[1].toDoubleOrNull()
+    val b = partes[2].toDoubleOrNull()
+    if (a == null || b == null) return "ERROR numero no valido"
+    val resultado = when (partes[0]) {
+        "SUMA" -> a + b
+        "RESTA" -> a - b
+        "MULT" -> a * b
+        "DIV" -> if (b == 0.0) return "ERROR division por cero" else a / b
+        else -> return "ERROR operacion desconocida"
+    }
+    return "OK " + "%.${decimales}f".format(Locale.ROOT, resultado)
+}
+
+// Un trabajador visto desde el coordinador: su proceso y los dos extremos de sus tuberías
+class Trabajador(val id: Int, val proceso: Process) {
+    val escritor: BufferedWriter = proceso.outputStream.bufferedWriter() // Hacia su entrada estándar
+    val lector: BufferedReader = proceso.inputStream.bufferedReader()    // Desde su salida estándar
+}
+
+// ===================== Tarea 1: proceso trabajador =====================
+fun trabajador(id: Int) {
+    val decimales = System.getenv("ABACO_DECIMALES")?.toIntOrNull() ?: 2
+    var correctas = 0
+    var errores = 0
+    while (true) {
+        val linea = readLine() ?: break // EOF: el coordinador ha cerrado la tubería
+        when (linea.trim()) {
+            "" -> continue
+            "FIN" -> {
+                println("STATS $id $correctas $errores")
+                exitProcess(0)
+            }
+            "ROMPER" -> {
+                System.err.println("[T$id] fallo grave simulado")
+                exitProcess(3)
+            }
+            else -> {
+                val respuesta = resolver(linea, decimales)
+                if (respuesta.startsWith("OK")) correctas++ else errores++
+                System.err.println("[T$id] $linea -> $respuesta") // Registro: va al log
+                println(respuesta) // Protocolo: va al coordinador (println vacía el búfer)
+            }
+        }
+    }
+}
+
+// ===================== Tarea 2: lanzar un trabajador =====================
+fun lanzarTrabajador(id: Int, decimales: Int): Trabajador {
+    val pb = procesoJava("trabajador", id.toString())
+        .redirectError(ProcessBuilder.Redirect.appendTo(File(DIR_LOGS, "trabajador-$id.log")))
+    pb.environment()["ABACO_DECIMALES"] = decimales.toString()
+    return Trabajador(id, pb.start())
+}
+
+// ===================== Tarea 3: petición y respuesta =====================
+// Envía una línea al trabajador y devuelve su respuesta, o null si el trabajador ha caído
+fun pedir(t: Trabajador, linea: String): String? {
+    return try {
+        t.escritor.write(linea)
+        t.escritor.newLine()
+        t.escritor.flush() // Sin flush, el trabajador no recibe nada y ambos se quedan esperando
+        t.lector.readLine() // null si el trabajador ha terminado (fin de su salida)
+    } catch (e: IOException) {
+        null // La tubería está rota: el trabajador ya no existe
+    }
+}
+
+// ===================== Tarea 5: cierre ordenado =====================
+// Pide al trabajador que termine y devuelve su línea de estadísticas (o un aviso si no responde)
+fun cerrar(t: Trabajador): String {
+    val stats = pedir(t, "FIN") ?: "sin estadisticas"
+    if (!t.proceso.waitFor(2, TimeUnit.SECONDS)) {
+        t.proceso.destroyForcibly().waitFor()
+    }
+    return "$stats (codigo ${t.proceso.exitValue()})"
+}
+
+// ===================== Tareas 3, 4 y 5: coordinador =====================
+fun calcular(fichero: File, numTrabajadores: Int, decimales: Int) {
+    if (!fichero.isFile) {
+        System.err.println("No existe el fichero $fichero")
+        exitProcess(1)
+    }
+    DIR_LOGS.mkdirs()
+
+    // Tarea 2: lanzar todos los trabajadores
+    val trabajadores = (1..numTrabajadores).map { lanzarTrabajador(it, decimales) }.toMutableList()
+    println("Lanzados $numTrabajadores trabajadores (PID ${trabajadores.joinToString { it.proceso.pid().toString() }})")
+
+    // Tareas 3 y 4: repartir las operaciones por turnos y relanzar los que caigan
+    var caidas = 0
+    val operaciones = fichero.readLines().filter { it.isNotBlank() }
+    operaciones.forEachIndexed { i, operacion ->
+        val posicion = i % numTrabajadores
+        val t = trabajadores[posicion]
+        val respuesta = pedir(t, operacion)
+        if (respuesta != null) {
+            println("[T${t.id}] $operacion -> $respuesta")
+        } else {
+            val codigo = t.proceso.waitFor()
+            val nuevo = lanzarTrabajador(t.id, decimales)
+            trabajadores[posicion] = nuevo
+            caidas++
+            println("[T${t.id}] $operacion -> trabajador caido (codigo $codigo), relanzado con PID ${nuevo.proceso.pid()}")
+        }
+    }
+
+    // Tarea 5: cerrar todos los trabajadores y mostrar el resumen
+    println("Resumen:")
+    trabajadores.forEach { println("  ${cerrar(it)}") }
+    println("Operaciones: ${operaciones.size}, trabajadores caidos: $caidas")
+}
+```
+
+</TabItem>
+</Tabs>
+
+</details>
