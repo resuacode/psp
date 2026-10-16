@@ -51,14 +51,48 @@ Cada mensaje es **una línea de texto**. Por cada línea que recibe, el trabajad
 - Responde según el protocolo. Las operaciones se resuelven con la función `resolver()` del esqueleto, usando el número de decimales que recibe en la **variable de entorno** `ABACO_DECIMALES` (2 si no existe).
 - Además de responder, registra cada operación por su **salida de error** con el formato `[T<id>] <operacion> -> <respuesta>`. Para `ROMPER` escribe `[T<id>] fallo grave simulado`. La salida estándar queda reservada para el protocolo.
 
+:::tip Cómo hace el proceso hijo cada cosa
+- **Leer su propia entrada estándar:** `readLine()` lee una línea de la entrada estándar del proceso. Devuelve `null` cuando se llega al final de la entrada (EOF), es decir, cuando el padre cierra la tubería. Si pruebas el trabajador a mano en la consola, el EOF se envía con Ctrl+D (Linux/macOS) o Ctrl+Z e Intro (Windows).
+- **Leer una variable de entorno:** `System.getenv("NOMBRE")` devuelve su valor como `String?`, o `null` si no existe.
+- **Escribir por la salida de error:** `System.err.println(...)` funciona igual que `println`, pero escribe en la salida de error en lugar de en la estándar.
+- **Terminar con un código de salida:** `exitProcess(código)` termina el programa en ese momento con el código indicado (`import kotlin.system.exitProcess`). Si el programa termina sin llamarla, el código es 0.
+
+```kotlin
+val linea = readLine()                                    // null si se ha llegado al final de la entrada
+val tamano = System.getenv("MI_TAMANO")?.toIntOrNull() ?: 10 // 10 si la variable no existe o no es un número
+System.err.println("Esto va a la salida de error")
+exitProcess(4)                                            // El proceso termina con código 4
+```
+:::
+
 **Tarea 2. Lanzar un trabajador (función `lanzarTrabajador`)**
 - Crea el proceso con `procesoJava("trabajador", id)` y le pasa los decimales mediante `environment()`.
 - Su salida de error se añade (sin borrar lo anterior) al fichero `logs/trabajador-<id>.log`. La entrada y la salida estándar se quedan como tuberías, porque son las que usa el protocolo.
 - Devuelve un `Trabajador` (clase del esqueleto que ya prepara un `escritor` hacia la entrada del proceso y un `lector` desde su salida).
 
+:::tip Variables de entorno y redirección que añade al final del fichero
+- **`environment()`** devuelve el mapa de variables de entorno que **recibirá el proceso hijo** (una copia de las del padre). Lo que se añade ahí afecta solo a ese hijo, y hay que hacerlo **antes** de `start()`. El hijo lo lee con `System.getenv`.
+- **`ProcessBuilder.Redirect.appendTo(fichero)`** redirige una salida del hijo a un fichero **añadiendo al final**, sin borrar lo que ya hubiera. En cambio, `redirectError(File(...))` o `Redirect.to(...)` **sobrescriben** el fichero cada vez que se lanza el proceso.
+- Redirigir solo la salida de error (`redirectError`) deja la entrada y la salida estándar como tuberías, que se siguen usando con `outputStream` e `inputStream`.
+
+```kotlin
+val pb = ProcessBuilder("programa", "arg1")
+pb.environment()["MI_TAMANO"] = "25" // El hijo verá MI_TAMANO=25
+pb.redirectError(ProcessBuilder.Redirect.appendTo(File("errores.log")))
+val proceso = pb.start()
+```
+:::
+
 **Tarea 3. Petición y respuesta (funciones `pedir` y `calcular`)**
 - `pedir` envía una línea al trabajador y devuelve la línea que este responde, o `null` si el trabajador ha caído (su salida se ha cerrado o la tubería está rota).
 - `calcular` comprueba que el fichero existe (si no, error y código 1), crea la carpeta `logs`, lanza los trabajadores y reparte las operaciones (las líneas no vacías del fichero) **por turnos**: la primera al trabajador 1, la segunda al 2... y vuelta a empezar. Por cada operación muestra `[T<id>] <operacion> -> <respuesta>`.
+
+:::tip Conversar con un proceso hijo y saber si ha caído
+- **Enviar una línea:** se escribe en el `escritor`, se añade el salto de línea con `newLine()` y se llama a `flush()`. Sin `flush()` el texto se queda en el búfer del padre, el hijo no recibe nada y los dos se quedan esperando. No se cierra el escritor, porque hay que seguir enviando líneas.
+- **Leer la respuesta:** `lector.readLine()` espera hasta que el hijo escribe una línea completa. Devuelve `null` si la salida del hijo se ha cerrado, es decir, si el proceso ha terminado.
+- **Escribir a un proceso que ya ha terminado** lanza una `IOException` (la tubería está rota), así que la escritura debe ir dentro de un `try`/`catch`.
+- **Ficheros:** `File(ruta).isFile` indica si existe y es un fichero, `readLines()` devuelve sus líneas como una lista y `File("carpeta").mkdirs()` crea la carpeta si no existe.
+:::
 
 **Tarea 4. Trabajadores caídos (función `calcular`)**
 - Si `pedir` devuelve `null`, el coordinador obtiene el código de salida del trabajador caído, lanza uno nuevo con el **mismo id** en su lugar, cuenta la caída y lo muestra: `[T<id>] <operacion> -> trabajador caido (codigo <c>), relanzado con PID <pid>`. La operación que lo hizo caer no se repite.
