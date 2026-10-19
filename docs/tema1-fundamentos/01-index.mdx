@@ -1361,3 +1361,203 @@ fun main() {
 </Tabs>
 </details>
 
+
+## Ejercicios extra
+
+Estos ejercicios están pensados para que practiques **de forma autónoma** de cara al examen. Están ordenados de menor a mayor dificultad y cada uno se parece un poco más a lo que se pide en el examen: los dos primeros trabajan con comandos del sistema operativo y los dos últimos, con un programa que se lanza a sí mismo como proceso hijo, igual que en el examen. **No incluyen solución**: cada uno trae un ejemplo de ejecución para que puedas comprobar si tu programa se comporta como se espera.
+
+:::tip Antes de empezar
+- En los ejercicios con comandos, lanza siempre el comando a través de su intérprete: `bash -c "<comando>"`, `powershell -Command "<comando>"` o `cmd /c <comando>`. Recuerda lo que se explica al principio de los ejercicios sobre los comandos internos de CMD, los *cmdlets* de PowerShell y la necesidad de cerrar la entrada estándar de `powershell`.
+- Si un método no lo has usado todavía, consulta su explicación en el [ejercicio tipo examen](./06-ejercicio-tipo-examen.mdx) del tema: allí se explican `environment()`, `System.getenv`, `Redirect.appendTo`, `System.err`, `exitProcess` y cómo leer la propia entrada estándar hasta el final.
+:::
+
+### Ejercicio extra 1: Inventario rápido del equipo
+
+**Enunciado:** Escribe un programa que obtenga información del equipo lanzando **a la vez** cinco comandos del sistema y guarde lo que devuelve cada uno en un fichero. El programa recibe como argumento el intérprete que se va a usar (`bash`, `powershell` o `cmd`) y lanza los comandos correspondientes:
+
+| Clave | bash | PowerShell | CMD |
+|-------|------|------------|-----|
+| `equipo` | `hostname` | `hostname` | `hostname` |
+| `usuario` | `whoami` | `whoami` | `whoami` |
+| `fecha` | `date` | `Get-Date` | `date /t` |
+| `entorno` | `env` | `Get-ChildItem Env:` | `set` |
+| `inexistente` | `ls /ruta/que/no/existe` | `Get-Item C:\ruta\que\no\existe` | `dir C:\ruta\que\no\existe` |
+
+**Requisitos:**
+- Uso: `inventario <bash|powershell|cmd>`. Con otro argumento, el programa muestra cómo se usa y termina con código 2.
+- Crea la carpeta `inventario` y lanza los cinco comandos **antes de esperar a ninguno**. La salida estándar de cada comando se redirige a `inventario/<clave>.txt` y la de error, a `inventario/<clave>.err`.
+- Espera a cada proceso como máximo 5 segundos; si se pasa, lo destruye y lo marca como `TIMEOUT`.
+- Muestra un resumen con una línea por comando: estado (`OK` si el código es 0, `ERROR <código>` o `TIMEOUT`), PID y número de líneas de su fichero de salida. En los comandos con error, muestra también la primera línea de su fichero `.err`.
+- Guarda ese mismo resumen en `inventario/resumen.txt`.
+
+**Ejemplo de ejecución** (los PID, nombres y número de líneas cambiarán):
+
+```text
+$ java -jar inventario.jar bash
+[OK]       equipo       PID 4211   1 linea(s)
+[OK]       usuario      PID 4212   1 linea(s)
+[OK]       fecha        PID 4214   1 linea(s)
+[OK]       entorno      PID 4215   38 linea(s)
+[ERROR 2]  inexistente  PID 4217   0 linea(s)  -> ls: cannot access '/ruta/que/no/existe': No such file or directory
+Resumen guardado en inventario/resumen.txt
+```
+
+### Ejercicio extra 2: Tubería configurable
+
+**Enunciado:** Escribe un programa que lea de un fichero de texto una **tubería de comandos** (un comando por línea) y la ejecute conectando la salida estándar de cada proceso con la entrada estándar del siguiente, como hace el operador `|` de la terminal, pero desde Kotlin. El programa muestra el código de salida de cada etapa y el resultado final.
+
+Prepara un fichero de tubería para cada intérprete. Los tres cuentan cuántos procesos con `java` en su nombre hay en ejecución:
+
+```text title="tuberia-bash.txt"
+ps -e
+grep java
+wc -l
+```
+
+```text title="tuberia-powershell.txt"
+Get-Process
+$input | Select-String java
+($input | Measure-Object).Count
+```
+
+```text title="tuberia-cmd.txt"
+tasklist
+findstr /i java
+find /c /v ""
+```
+
+En PowerShell, `$input` representa lo que llega al proceso por su entrada estándar.
+
+**Requisitos:**
+- Uso: `encadenar <fichero> <bash|powershell|cmd>`. Se ignoran las líneas vacías del fichero. Si el fichero no existe o tiene menos de dos comandos, se muestra un error y se termina con código 1.
+- Se lanzan **todas** las etapas y después se va pasando la salida de cada una a la entrada de la siguiente (`transferTo`), cerrando cada entrada al terminar para que la etapa siguiente reciba el final de los datos. La entrada de la primera etapa se cierra nada más lanzarla.
+- Al final se muestra la salida de la última etapa y una línea por etapa con su comando y su código de salida.
+- Si alguna etapa termina con un código distinto de 0, se indica cuál. Ten en cuenta que `grep` y `findstr` terminan con código 1 cuando no encuentran nada: el programa debe avisar, pero no tratarlo como un fallo grave.
+- **Opcional:** Java permite lanzar una tubería completa con `ProcessBuilder.startPipeline(listaDeProcessBuilders)`, que conecta las etapas automáticamente y devuelve la lista de procesos. Añade un segundo modo, `encadenar-auto <fichero> <interprete>`, que haga lo mismo con este método, y compara el resultado.
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar encadenar.jar tuberia-bash.txt bash
+Resultado:
+2
+Etapa 1: ps -e        -> codigo 0
+Etapa 2: grep java    -> codigo 0
+Etapa 3: wc -l        -> codigo 0
+
+$ java -jar encadenar.jar tuberia-cmd.txt cmd      (con un fichero en el que se busca "noexiste")
+Resultado:
+0
+Etapa 1: tasklist            -> codigo 0
+Etapa 2: findstr /i noexiste -> codigo 1  (aviso: la etapa no ha encontrado nada)
+Etapa 3: find /c /v ""       -> codigo 1
+```
+
+### Ejercicio extra 3: Contador de palabras repartido
+
+**Enunciado:** Escribe un único programa Kotlin que cuente las palabras más frecuentes de un fichero de texto grande repartiendo el trabajo entre **varios procesos hijo**. El programa tiene dos modos: el proceso **padre** divide el fichero en trozos y se los envía a los hijos por su entrada estándar, y cada proceso **hijo** cuenta las palabras de su trozo y devuelve el recuento por su salida estándar. Este ejercicio no usa comandos del sistema, así que funciona igual en Linux, macOS y Windows.
+
+Para lanzar el propio programa como proceso hijo, puedes usar esta función (cambia `MainKt` si tu fichero no se llama `Main.kt`):
+
+```kotlin
+// Prepara un proceso que ejecuta ESTE MISMO programa con los argumentos indicados
+fun procesoJava(vararg args: String): ProcessBuilder {
+    val java = ProcessHandle.current().info().command().orElse("java")
+    val classpath = System.getProperty("java.class.path")
+    return ProcessBuilder(java, "-cp", classpath, "MainKt", *args)
+}
+```
+
+Como texto de prueba puedes usar cualquier libro de dominio público en formato `.txt` (por ejemplo, de [Project Gutenberg](https://www.gutenberg.org/)).
+
+**Modos del programa:**
+
+| Modo | Papel | Descripción |
+|------|-------|-------------|
+| `contar` | Proceso hijo | Lee texto por su entrada estándar hasta el final (EOF) y escribe una línea `palabra;veces` por cada palabra distinta. |
+| `repartir <fichero> <numHijos> <minLongitud>` | Proceso padre | Reparte el fichero entre `numHijos` hijos, junta sus recuentos y muestra las 10 palabras más frecuentes. |
+
+**Requisitos:**
+- **Hijo:** pasa el texto a minúsculas y lo separa en palabras usando como separador todo lo que no sea una letra (`Regex("[^\\p{L}]+")`). Ignora las palabras con menos letras que el valor de la variable de entorno `MIN_LONGITUD` (1 si no existe). Si no ha recibido ninguna palabra, escribe `Sin palabras` por la salida de error y termina con código 1.
+- **Padre:** lee las líneas del fichero y las divide en `numHijos` trozos consecutivos de tamaño parecido. Lanza **todos** los hijos pasándoles `MIN_LONGITUD` con `environment()`, escribe a cada uno su trozo por la entrada estándar y la cierra.
+- **Padre:** después lee la salida de cada hijo **antes** de llamar a su `waitFor()` (si espera primero, un hijo con mucha salida puede quedarse bloqueado con la tubería llena) y suma los recuentos de todos en un mapa.
+- **Padre:** muestra una línea por hijo (PID, líneas recibidas, palabras distintas devueltas y código de salida), el total de palabras contadas y las 10 más frecuentes. Un hijo que termine con error se indica, pero no detiene el programa.
+- Comprueba tu programa ejecutando el modo `contar` directamente con todo el fichero como entrada (`java -jar palabras.jar contar < libro.txt` en bash o CMD; en PowerShell, `Get-Content libro.txt | java -jar palabras.jar contar`): la suma de todas las veces debe coincidir con el total del modo `repartir`.
+
+**Ejemplo de ejecución** (los números dependen del texto usado):
+
+```text
+$ java -jar palabras.jar repartir quijote.txt 4 4
+Hijo 1 (PID 5120): 9387 lineas, 11204 palabras distintas, codigo 0
+Hijo 2 (PID 5121): 9387 lineas, 10987 palabras distintas, codigo 0
+Hijo 3 (PID 5123): 9387 lineas, 11502 palabras distintas, codigo 0
+Hijo 4 (PID 5126): 9386 lineas, 10831 palabras distintas, codigo 0
+Total de palabras contadas: 196512
+Top 10:
+ 1. que        20626
+ 2. como        3587
+ 3. quijote     2186
+ ...
+```
+
+### Ejercicio extra 4: Cola de trabajos con límite de ejecución
+
+**Enunciado:** Escribe un **planificador de trabajos** por consola que ejecute trabajos como procesos hijo, pero **sin superar nunca un número máximo de trabajos a la vez**: los que no caben esperan en una cola y se lanzan en orden de llegada a medida que terminan los anteriores. Los trabajos son el propio programa lanzado en otro modo (usa la función `procesoJava` del ejercicio anterior), así que el ejercicio funciona igual en cualquier sistema.
+
+**Modos del programa:**
+
+| Modo | Papel | Descripción |
+|------|-------|-------------|
+| *(sin argumentos)* | Proceso padre | Planificador interactivo con el *prompt* `cola> `. |
+| `trabajo <nombre> <segundos> <codigo>` | Proceso hijo | Escribe `<nombre>: paso <i>/<segundos>` una vez por segundo y, al terminar, `<nombre>: fin` y termina con el código indicado. |
+
+**Comandos del planificador:**
+
+```text
+encolar <nombre> <segundos> <codigo>   Añade un trabajo al final de la cola
+limite <n>                             Cambia el número máximo de trabajos a la vez (2 al empezar)
+estado                                 Muestra todos los trabajos y su estado
+cancelar <nombre>                      Quita un trabajo de la cola o detiene uno en ejecución
+esperar                                No devuelve el control hasta que no quedan trabajos en cola ni en ejecución
+salir                                  Cancela todo lo pendiente, muestra el resumen y termina
+```
+
+**Requisitos:**
+- Cada trabajo tiene uno de estos estados: `EN COLA`, `EJECUTANDO`, `TERMINADO (<código>)`, `CANCELADO` o `CADUCADO`. El comando `estado` los muestra en orden de llegada y, para los que están en ejecución, añade su PID y los segundos que llevan.
+- Antes de ejecutar cada comando, el planificador **revisa** los trabajos:
+  - marca como terminados los que han acabado (con su código de salida);
+  - destruye los que llevan más de 10 segundos en ejecución y los marca como `CADUCADO`;
+  - lanza trabajos de la cola, en orden, mientras haya hueco según el límite;
+  - muestra un aviso que empieza por `[cola]` cada vez que un trabajo termina, caduca o se lanza desde la cola.
+- La salida de cada trabajo se añade al fichero `trabajos/<nombre>.log` mediante redirección. Todas las acciones del planificador (encolar, lanzar, terminar, cancelar, caducar) se registran con fecha y hora en `planificador.log`.
+- `cancelar` sobre un trabajo en ejecución lo detiene con `destroy()` y, si a los 2 segundos sigue vivo, con `destroyForcibly()`.
+- `esperar` hace la misma revisión en bucle (con una pequeña pausa entre vueltas) hasta que no quedan trabajos pendientes ni en ejecución.
+- `salir` cancela los trabajos en cola y en ejecución, y muestra un resumen: cuántos han terminado bien (código 0), con error, cancelados y caducados.
+- Valida los comandos y sus argumentos: nombres repetidos, números no válidos, límite menor que 1...
+
+**Ejemplo de ejecución** (los PID cambiarán):
+
+```text
+$ java -jar cola.jar
+cola> encolar copia 3 0
+cola> encolar informe 5 0
+cola> encolar fallo 2 4
+cola> encolar eterno 30 0
+cola> estado
+copia     EJECUTANDO (PID 6011)   1 s
+informe   EJECUTANDO (PID 6013)   1 s
+fallo     EN COLA
+eterno    EN COLA
+cola> esperar
+[cola] copia terminado (0); se lanza fallo
+[cola] fallo terminado (4); se lanza eterno
+[cola] informe terminado (0)
+[cola] eterno caducado tras 10 s
+cola> estado
+copia     TERMINADO (0)
+informe   TERMINADO (0)
+fallo     TERMINADO (4)
+eterno    CADUCADO
+cola> salir
+Resumen: 2 correctos, 1 con error, 0 cancelados, 1 caducado
+```
