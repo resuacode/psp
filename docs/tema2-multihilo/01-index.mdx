@@ -690,3 +690,168 @@ fun main() = runBlocking {
 ```
 </details>
 
+
+## Ejercicios extra
+
+Estos ejercicios están pensados para que practiques **de forma autónoma** de cara al examen. Están ordenados de menor a mayor dificultad y cada uno se parece un poco más a lo que se pide en el examen: los dos primeros trabajan con hilos y sincronización, el tercero con corrutinas y el último combina ambas partes, igual que el examen. **No incluyen solución**: cada uno trae un ejemplo de ejecución para que puedas comprobar si tu programa se comporta como se espera.
+
+:::tip Antes de empezar
+- Los ejercicios con corrutinas necesitan la dependencia `org.jetbrains.kotlinx:kotlinx-coroutines-core` en el `build.gradle.kts` (consulta el apartado de configuración del tema de corrutinas).
+- Al trabajar con hilos, la salida no es exactamente igual en cada ejecución: los ejemplos muestran una ejecución posible. Lo que sí debe cumplirse siempre son las **comprobaciones** que se piden en cada ejercicio, así que ejecuta tu programa varias veces antes de darlo por bueno.
+- Estos ejercicios no usan comandos del sistema, así que funcionan igual en Linux, macOS y Windows.
+:::
+
+### Ejercicio extra 1: Carrera de caracoles
+
+**Enunciado:** Escribe un programa que simule una carrera entre varios caracoles, cada uno en su propio hilo. Todos deben salir **exactamente a la vez** cuando suene la señal de salida, avanzar a su ritmo hasta la meta y quedar registrados en el orden en que llegan.
+
+**Requisitos:**
+- Uso: `carrera <numCaracoles> <metros>`. Valida que los dos valores sean números positivos.
+- Cada caracol es un hilo con nombre (`caracol-1`, `caracol-2`...). En cada paso avanza entre 1 y 3 metros al azar y tarda entre 20 y 60 ms. Muestra un mensaje cada vez que supera la mitad del recorrido.
+- Todos los caracoles esperan a la señal de salida con un `CountDownLatch`. El hilo principal muestra una cuenta atrás (`3... 2... 1... ¡YA!`) y después da la señal.
+- El orden de llegada se guarda en una colección segura para hilos (por ejemplo, `ConcurrentLinkedQueue`) y el ganador se decide con una operación atómica (`AtomicReference.compareAndSet` o similar), de modo que **solo uno** pueda proclamarse ganador.
+- El hilo principal espera a que lleguen todos (`join`) y muestra el podio y la clasificación completa.
+- **Comprobación:** la clasificación tiene exactamente `numCaracoles` caracoles, sin repetidos, y el ganador coincide con el primero de la clasificación.
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar carrera.jar 4 30
+3... 2... 1... ¡YA!
+caracol-3 ha pasado la mitad
+caracol-1 ha pasado la mitad
+caracol-4 ha pasado la mitad
+caracol-2 ha pasado la mitad
+¡caracol-3 gana la carrera!
+Clasificacion: 1. caracol-3  2. caracol-1  3. caracol-4  4. caracol-2
+Comprobacion: OK
+```
+
+### Ejercicio extra 2: Transferencias sin interbloqueo
+
+**Enunciado:** Un banco tiene varias cuentas y muchos empleados que hacen transferencias entre ellas al mismo tiempo. Cada transferencia necesita bloquear **las dos cuentas** implicadas, lo que puede provocar un interbloqueo si dos empleados transfieren a la vez en sentidos opuestos. Escribe un programa que muestre el problema y lo resuelva.
+
+**Requisitos:**
+- Uso: `banco <ingenuo|ordenado|intento> <numEmpleados> <transferenciasPorEmpleado>`.
+- Hay 10 cuentas con 1000 € cada una. Cada cuenta tiene su propio `ReentrantLock`.
+- Los empleados son tareas de un `ExecutorService` de tamaño fijo. Cada transferencia elige dos cuentas distintas y una cantidad (de 1 a 100 €) al azar, y solo se hace si la cuenta de origen tiene saldo suficiente.
+- Implementa tres estrategias para bloquear las dos cuentas:
+  - **`ingenuo`:** bloquea primero el origen y después el destino. Puede quedarse bloqueado para siempre.
+  - **`ordenado`:** bloquea siempre primero la cuenta con el número más bajo. Nunca hay interbloqueo.
+  - **`intento`:** usa `tryLock(50, TimeUnit.MILLISECONDS)` en las dos cuentas; si no consigue alguna, libera lo que tenga, espera un poco y lo vuelve a intentar. Cuenta los reintentos.
+- El programa espera a que termine el pool como máximo 10 segundos. Si no ha terminado (interbloqueo), lo indica y termina igualmente con `shutdownNow()` y `exitProcess`.
+- Al final muestra el número de transferencias hechas y rechazadas por falta de saldo, los reintentos (en el modo `intento`) y el dinero total del banco.
+- **Comprobación:** el dinero total sigue siendo 10000 € y ninguna cuenta tiene saldo negativo.
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar banco.jar ingenuo 8 5000
+El pool no ha terminado en 10 s: probable INTERBLOQUEO
+
+$ java -jar banco.jar ordenado 8 5000
+Transferencias: 38712 hechas, 1288 rechazadas por saldo
+Dinero total: 10000 EUR
+Comprobacion: OK
+
+$ java -jar banco.jar intento 8 5000
+Transferencias: 38655 hechas, 1345 rechazadas por saldo, 2104 reintentos
+Dinero total: 10000 EUR
+Comprobacion: OK
+```
+
+### Ejercicio extra 3: Comparador de vuelos
+
+**Enunciado:** Escribe un comparador de precios de vuelos que consulte a la vez varias aerolíneas simuladas con corrutinas. Algunas aerolíneas son lentas y otras fallan, pero eso no debe impedir mostrar los resultados del resto. Además, el comparador muestra las ofertas que van llegando en tiempo real.
+
+Simula las aerolíneas con esta función (cópiala tal cual en tu programa):
+
+```kotlin
+class AerolineaCaidaException(mensaje: String) : Exception(mensaje)
+
+val AEROLINEAS = listOf("Iberhilo", "VuelaKt", "AirCorrutina", "RyanThread", "Suspendair", "JetFlow")
+
+// Devuelve los precios de la aerolínea 'i' para el destino indicado
+suspend fun consultarAerolinea(i: Int, destino: String): List<Int> {
+    delay(100L + i * 150) // Cada aerolínea tarda un poco más que la anterior
+    if (i == 2) throw AerolineaCaidaException("${AEROLINEAS[i]} no responde")
+    return List(3) { n -> 40 + (destino.length * 7 + i * 13 + n * 29) % 160 }
+}
+```
+
+**Requisitos:**
+- Uso: `vuelos <destino> <timeoutMs>`.
+- Consulta las 6 aerolíneas **a la vez** con `async`, cada una con el límite de tiempo indicado (`withTimeout` o `withTimeoutOrNull`). Las que fallan o tardan demasiado se muestran como descartadas, sin afectar a las demás.
+- Cuando terminan todas, muestra el precio más barato de cada aerolínea, la mejor oferta global y el tiempo total, que debe estar cerca de la consulta más lenta admitida, no de la suma de todas.
+- Además, mientras se consultan, una corrutina muestra las ofertas en cuanto llegan. Para ello, cada consulta publica sus precios en un `MutableSharedFlow` o en un `Channel`, y un consumidor muestra solo las ofertas por debajo de 100 € (`filter`) con el formato `Oferta: <aerolinea> <precio> EUR`.
+- No uses `Thread.sleep` ni `GlobalScope`. El programa debe terminar solo.
+
+**Ejemplo de ejecución** (el tiempo cambiará):
+
+```text
+$ java -jar vuelos.jar Roma 600
+Oferta: Iberhilo 68 EUR
+Oferta: Iberhilo 97 EUR
+Oferta: VuelaKt 81 EUR
+AirCorrutina descartada: AirCorrutina no responde
+Suspendair descartada: mas de 600 ms
+JetFlow descartada: mas de 600 ms
+Precios minimos:
+  Iberhilo     68 EUR
+  VuelaKt      81 EUR
+  RyanThread  107 EUR
+Mejor oferta: Iberhilo 68 EUR (612 ms)
+```
+
+### Ejercicio extra 4: Ascensores del rascacielos
+
+**Enunciado:** El rascacielos **Torre Concurrente** tiene varios ascensores y quiere simular cómo atienden las llamadas de los vecinos. Escribe un programa con dos modos: uno con **hilos**, en el que los ascensores atienden llamadas de una cola compartida, y otro con **corrutinas**, en el que las llamadas llegan desde una app y se muestra la posición de los ascensores en tiempo real.
+
+**Modos del programa:**
+
+| Modo | Descripción |
+|------|-------------|
+| `hilos <ascensores> <llamadas>` | Los vecinos (hilos) generan llamadas y los ascensores (hilos) las atienden desde una cola bloqueante. |
+| `corrutinas <ascensores> <llamadas>` | Las llamadas llegan por un `Channel` y la posición de cada ascensor se publica en un `StateFlow`. |
+
+Una llamada está formada por el piso de origen y el de destino (del 0 al 20, distintos). Un ascensor tarda 10 ms por cada piso que recorre: primero va desde su piso actual hasta el origen y después hasta el destino.
+
+**Requisitos del modo `hilos`:**
+- Las llamadas se guardan en un `LinkedBlockingQueue`. Tres hilos *vecino* generan entre todos las llamadas pedidas y las ponen en la cola.
+- Cada ascensor es un hilo que coge llamadas de la cola, simula el viaje, actualiza su piso y lleva la cuenta de los viajes y los pisos recorridos.
+- Cuando los vecinos han terminado, el hilo principal mete **una llamada especial de fin por cada ascensor** para que todos terminen, y espera a todos con `join`.
+- Las estadísticas globales (viajes y pisos recorridos) se acumulan con clases atómicas.
+- Un hilo *daemon* muestra cada 200 ms cuántas llamadas quedan en la cola.
+- Al final se muestra el resumen por ascensor y la **comprobación**: los viajes hechos suman exactamente el número de llamadas generadas.
+
+**Requisitos del modo `corrutinas`:**
+- Una corrutina productora envía las llamadas a un `Channel` con capacidad 10 y lo cierra al terminar.
+- Cada ascensor es una corrutina (`launch`) que consume del mismo canal hasta que se cierra. El viaje se simula con `delay`.
+- La posición de cada ascensor se publica en su propio `MutableStateFlow<Int>`. Una corrutina monitor muestra cada 200 ms la posición de todos los ascensores (por ejemplo, `Pisos: A1=7 A2=15 A3=0`) y se cancela al terminar la simulación.
+- Los contadores compartidos se protegen con un `Mutex` o con atómicos.
+- Al final se muestra el mismo resumen y la misma comprobación que en el modo `hilos`.
+
+**Ejemplo de ejecución** (los números cambiarán en cada ejecución, salvo la comprobación):
+
+```text
+$ java -jar ascensores.jar hilos 3 60
+[monitor] llamadas en cola: 41
+[monitor] llamadas en cola: 18
+[monitor] llamadas en cola: 0
+Ascensor 1: 21 viajes, 312 pisos
+Ascensor 2: 19 viajes, 287 pisos
+Ascensor 3: 20 viajes, 301 pisos
+Total: 60 viajes, 900 pisos
+Comprobacion: OK
+
+$ java -jar ascensores.jar corrutinas 3 60
+Pisos: A1=0 A2=0 A3=0
+Pisos: A1=12 A2=4 A3=17
+Pisos: A1=3 A2=9 A3=20
+...
+Ascensor 1: 20 viajes, 296 pisos
+Ascensor 2: 21 viajes, 318 pisos
+Ascensor 3: 19 viajes, 279 pisos
+Total: 60 viajes, 893 pisos
+Comprobacion: OK
+```

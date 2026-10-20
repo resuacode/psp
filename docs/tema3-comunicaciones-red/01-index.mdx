@@ -473,3 +473,213 @@ fun main() {
 ```
 </details>
 
+
+## Ejercicios extra
+
+Estos ejercicios están pensados para que practiques **de forma autónoma** de cara al examen. Están ordenados de menor a mayor dificultad y cada uno se parece un poco más a lo que se pide en el examen: los primeros trabajan TCP y UDP por separado, el tercero un servidor multihilo con estado compartido y el último combina todo (TCP, UDP, configuración, log y cliente con menú), igual que el examen. **No incluyen solución**: cada uno trae un ejemplo de ejecución para que puedas comprobar si tu programa se comporta como se espera.
+
+:::tip Comprobar puertos y probar el servidor sin cliente
+Mientras desarrollas el servidor, puedes comprobar que está escuchando y probarlo a mano con estos comandos (sustituye `6100` por el puerto de cada ejercicio):
+
+| Para... | bash (Linux/macOS) | PowerShell | CMD |
+|---------|--------------------|------------|-----|
+| Ver si un puerto TCP está escuchando | `ss -lnt` (busca el puerto en la lista) | `Get-NetTCPConnection -LocalPort 6100 -State Listen` | `netstat -ano` (busca `:6100` con `LISTENING`) |
+| Ver si un puerto UDP está abierto | `ss -lnu` | `Get-NetUDPEndpoint -LocalPort 6100` | `netstat -ano -p udp` (busca `:6100`) |
+| Comprobar que se puede conectar por TCP | `nc -zv localhost 6100` | `Test-NetConnection localhost -Port 6100` | `telnet localhost 6100` |
+| Hablar con un servidor TCP escribiendo a mano | `nc localhost 6100` | `telnet localhost 6100` | `telnet localhost 6100` |
+| Enviar un datagrama UDP a mano | `nc -u localhost 6100` | *(usa tu propio cliente)* | *(usa tu propio cliente)* |
+
+En Windows, `telnet` hay que activarlo como característica opcional ("Cliente Telnet"). Si no puedes activarlo, prueba el servidor con tu propio cliente.
+:::
+
+### Ejercicio extra 1: Agenda telefónica por TCP
+
+**Enunciado:** Escribe un servidor TCP que guarde una agenda de contactos en memoria y un cliente de consola para usarla. A diferencia del servidor de eco, aquí cada cliente mantiene **una conversación** con el servidor: envía varios comandos por la misma conexión hasta que decide salir.
+
+**Protocolo** (una línea por mensaje, puerto 6100):
+
+```text
+ALTA <nombre> <telefono>   ->  OK alta de <nombre>        | ERROR ya existe
+BUSCA <nombre>             ->  OK <telefono>              | ERROR no existe
+BAJA <nombre>              ->  OK baja de <nombre>        | ERROR no existe
+LISTA                      ->  OK <n> <nombre1>=<tel1>,<nombre2>=<tel2>,...   (OK 0 si está vacía)
+SALIR                      ->  OK adios   (y el servidor cierra la conexión)
+<cualquier otra cosa>      ->  ERROR comando desconocido
+```
+
+**Requisitos:**
+- El servidor atiende a **un cliente cada vez** (sin hilos): cuando un cliente sale, pasa a atender al siguiente. La agenda se mantiene entre clientes.
+- El servidor muestra por consola cada conexión (dirección y puerto del cliente), cada comando recibido y cada desconexión. Si un cliente se desconecta sin enviar `SALIR`, el servidor no debe terminar con error: simplemente pasa al siguiente.
+- El teléfono debe tener 9 dígitos; si no, el servidor responde `ERROR telefono no valido`.
+- El cliente lee comandos del teclado, los envía, muestra la respuesta y termina al enviar `SALIR`. Si no puede conectar con el servidor, muestra un mensaje claro en lugar de la excepción.
+- Prueba el servidor también sin tu cliente, con `nc` o `telnet` (ver la tabla del principio).
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar cliente-agenda.jar
+Conectado a localhost:6100
+> ALTA ana 600111222
+OK alta de ana
+> ALTA luis 6001
+ERROR telefono no valido
+> ALTA luis 600333444
+OK alta de luis
+> BUSCA ana
+OK 600111222
+> LISTA
+OK 2 ana=600111222,luis=600333444
+> SALIR
+OK adios
+```
+
+### Ejercicio extra 2: Estaciones de calidad del aire por UDP
+
+**Enunciado:** Varias estaciones de medición envían periódicamente el nivel de contaminación (índice de 0 a 500) a un servidor central por **UDP**. El servidor guarda las lecturas y responde a consultas sobre la media de cada estación. Como UDP no garantiza la entrega, el cliente que consulta debe **reintentar** si no recibe respuesta.
+
+**Protocolo** (puerto 6200, un datagrama por mensaje):
+
+```text
+LECTURA;<estacion>;<valor>   ->  (sin respuesta)
+CONSULTA;<estacion>          ->  MEDIA;<estacion>;<media con 1 decimal>;<numLecturas>  |  ERROR;sin datos de <estacion>
+```
+
+**Requisitos:**
+- **Servidor:** recibe datagramas en un bucle y distingue el tipo de mensaje. Ignora (mostrando un aviso) las lecturas con un valor fuera del rango 0-500 o mal formadas. Responde las consultas a la dirección y el puerto desde los que llegaron.
+- **Servidor:** si se arranca con el argumento `--perdidas`, ignora al azar el 40 % de las consultas (sin responder) para simular pérdidas en la red y poder probar los reintentos.
+- **Cliente, modo `emitir <estacion> <numLecturas>`:** envía las lecturas, con valores al azar, una cada 200 ms, y muestra cada una.
+- **Cliente, modo `consultar <estacion>`:** envía la consulta y espera la respuesta como máximo 1 segundo (`setSoTimeout`). Si no llega, lo vuelve a intentar hasta 3 veces en total, mostrando cada intento, y al final indica si ha obtenido respuesta o no.
+- Comprueba con los comandos de la tabla del principio que el puerto UDP está abierto mientras el servidor funciona.
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar estacion.jar emitir centro 5
+Enviada lectura centro = 87
+Enviada lectura centro = 120
+Enviada lectura centro = 64
+Enviada lectura centro = 99
+Enviada lectura centro = 143
+
+$ java -jar estacion.jar consultar centro          (servidor arrancado con --perdidas)
+Intento 1: sin respuesta en 1 s
+Intento 2: MEDIA;centro;102.6;5
+
+$ java -jar estacion.jar consultar norte
+Intento 1: ERROR;sin datos de norte
+```
+
+### Ejercicio extra 3: Subasta en directo
+
+**Enunciado:** Escribe un servidor TCP **multihilo** para una subasta en directo y su cliente. Varios pujadores se conectan a la vez, pujan por un mismo objeto y reciben al momento las pujas de los demás. La subasta se cierra sola cuando pasan unos segundos sin pujas nuevas.
+
+**Protocolo** (puerto 6300):
+
+```text
+Al conectar, el cliente envía:  NOMBRE <nombre>   ->  BIENVENIDO <objeto> precio actual <precio>  |  ERROR nombre en uso
+PUJA <cantidad>                 ->  OK puja aceptada  |  RECHAZADA minimo <precio actual + 5>
+ESTADO                          ->  ESTADO <precio actual> <ganador provisional o "nadie">
+SALIR                           ->  OK adios
+
+El servidor envía a todos los demás clientes, sin que lo pidan:
+AVISO <nombre> puja <cantidad>
+FIN <ganador> <cantidad>        (al cerrar la subasta; después cierra todas las conexiones)
+```
+
+**Requisitos:**
+- Uso del servidor: `servidor <objeto> <precioSalida> <segundosSinPujas>`.
+- El servidor atiende a cada cliente en su propio hilo. La lista de clientes conectados se guarda en una colección segura para hilos y se usa para enviar los avisos a todos.
+- El precio actual y el ganador provisional se comparten entre todos los hilos: comprobar que una puja supera el mínimo y aceptarla debe ser **una operación atómica**, para que dos pujas simultáneas no puedan aceptarse con el mismo precio.
+- Un hilo temporizador (o un `ScheduledExecutorService`) cierra la subasta cuando pasan `segundosSinPujas` segundos sin pujas aceptadas: envía `FIN` a todos, cierra las conexiones y termina el servidor.
+- El cliente necesita **dos hilos**: uno lee del teclado y envía los comandos, y otro escucha los mensajes del servidor y los muestra en cuanto llegan. Al recibir `FIN`, el cliente termina.
+- Si un cliente se desconecta de golpe, el servidor lo quita de la lista sin afectar al resto.
+
+**Ejemplo de ejecución** (dos clientes a la vez):
+
+```text
+[cliente ana]                               [cliente luis]
+> NOMBRE ana                                > NOMBRE luis
+BIENVENIDO reloj precio actual 50           BIENVENIDO reloj precio actual 50
+> PUJA 60                                   AVISO ana puja 60
+OK puja aceptada                            > PUJA 62
+                                            RECHAZADA minimo 65
+AVISO luis puja 70                          > PUJA 70
+                                            OK puja aceptada
+> ESTADO
+ESTADO 70 luis
+FIN luis 70                                 FIN luis 70
+```
+
+### Ejercicio extra 4: ParkNet, aparcamiento inteligente
+
+**Enunciado:** Un aparcamiento de varias plantas quiere un sistema en red para gestionar sus entradas y salidas desde varias cabinas a la vez. Las consultas rápidas de plazas libres (por ejemplo, para el panel de la entrada) se hacen por **UDP**, y las operaciones que modifican datos, por **TCP** con un servidor **multihilo**. El servidor lee su configuración de un fichero y registra todas las operaciones en un log.
+
+**Ficheros de configuración:**
+
+```text title="config.txt"
+puerto_tcp=6400
+puerto_udp=6401
+plantas=plantas.txt
+log=parknet.log
+euros_minuto=0.05
+```
+
+```text title="plantas.txt"
+P0;10
+P1;8
+P2;5
+```
+
+Para que las pruebas sean rápidas, **cada segundo real cuenta como un minuto** al calcular el importe. El importe mínimo es de 1 €.
+
+**Protocolo:**
+
+```text
+UDP  LIBRES              ->  P0=10;P1=8;P2=5
+UDP  LIBRES;<planta>     ->  <planta>=<libres>  |  ERROR;planta no existe
+
+TCP  ENTRAR <matricula>  ->  OK planta <planta>  |  ERROR completo  |  ERROR ya esta dentro
+TCP  SALIR <matricula>   ->  OK importe <euros con 2 decimales>  |  ERROR no esta dentro
+TCP  BUSCAR <matricula>  ->  OK <planta> desde <hh:mm:ss>  |  ERROR no esta dentro
+TCP  LISTAR              ->  OK <n> <matricula1>:<planta1>,<matricula2>:<planta2>,...
+TCP  FIN                 ->  OK adios
+```
+
+**Requisitos del servidor:**
+- Lee `config.txt` y el fichero de plantas. Si falta algún dato, usa valores por defecto y lo indica al arrancar.
+- Atiende UDP y TCP a la vez (cada uno en su propio hilo) y cada cliente TCP en su propio hilo.
+- `ENTRAR` asigna la **primera planta con plazas libres** en el orden del fichero. La asignación debe ser atómica: aunque muchas cabinas pidan entrar a la vez, nunca puede haber más coches que plazas en una planta ni dos entradas con la misma matrícula.
+- Registra cada operación en el log con fecha, hora, dirección del cliente, comando y respuesta.
+
+**Requisitos del cliente:**
+- Menú por consola con las opciones: consultar plazas libres (UDP), consultar una planta (UDP), entrar, salir, buscar, listar (TCP) y salir del programa.
+- Valida la matrícula antes de enviarla (4 números y 3 letras, por ejemplo `1234ABC`).
+- Usa un tiempo máximo de espera de 2 segundos en UDP e informa si el servidor no responde.
+- **Modo de prueba de carga** `simular <numCabinas>`: lanza `numCabinas` hilos que intentan entrar a la vez con matrículas distintas, y al terminar comprueba con `LIBRES` que no se ha superado la capacidad de ninguna planta y que el número de entradas aceptadas coincide con las plazas ocupadas.
+
+**Ejemplo de ejecución:**
+
+```text
+$ java -jar parknet-cliente.jar
+=== PARKNET ===
+1. Plazas libres (UDP)
+2. Plazas libres de una planta (UDP)
+3. Entrar
+4. Salir
+5. Buscar vehiculo
+6. Listar vehiculos
+0. Salir del programa
+Opcion: 3
+Matricula: 1234ABC
+OK planta P0
+Opcion: 1
+P0=9;P1=8;P2=5
+Opcion: 4
+Matricula: 1234ABC
+OK importe 1.00
+
+$ java -jar parknet-cliente.jar simular 30
+30 cabinas: 23 entradas aceptadas, 7 rechazadas (completo)
+Plazas libres al terminar: P0=0;P1=0;P2=0
+Comprobacion: OK
+```
